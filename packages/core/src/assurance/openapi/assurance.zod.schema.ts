@@ -1,0 +1,657 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const assembleEvidentiaryTimeline_Body = z
+  .object({
+    purpose: z.enum([
+      'regulatory_review',
+      'insurance_claim',
+      'board_report',
+      'internal_investigation',
+    ]),
+    vulnerabilityIds: z.array(z.string()).optional(),
+    periodStart: z.string().optional(),
+    periodEnd: z.string().optional(),
+  })
+  .passthrough();
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const PublishedSeverity = z
+  .object({
+    vulnerabilityId: z.string(),
+    baseScore: z.number(),
+    qualitativeRating: z.enum(['none', 'low', 'medium', 'high', 'critical']),
+    scoringStandard: z.enum(['v2', 'v3']),
+    publishedAt: z.string().datetime({ offset: true }),
+    awaitingAnalysis: z.boolean(),
+  })
+  .partial()
+  .passthrough();
+const ExploitEvidence = z
+  .object({
+    vulnerabilityId: z.string(),
+    corroboratedBy: z.array(
+      z.enum([
+        'antivirus_signature',
+        'intrusion_signature',
+        'exploit_archive',
+        'internal_telemetry',
+      ])
+    ),
+    firstEvidenceAt: z.string().datetime({ offset: true }),
+    evidenceIsIncomplete: z.boolean().default(true),
+  })
+  .partial()
+  .passthrough();
+const Backtest = z
+  .object({
+    warningId: z.string(),
+    vulnerabilityId: z.string().optional(),
+    evaluatedAt: z.string().datetime({ offset: true }),
+    publishedSeverity: z
+      .object({
+        vulnerabilityId: z.string(),
+        baseScore: z.number(),
+        qualitativeRating: z.enum([
+          'none',
+          'low',
+          'medium',
+          'high',
+          'critical',
+        ]),
+        scoringStandard: z.enum(['v2', 'v3']),
+        publishedAt: z.string().datetime({ offset: true }),
+        awaitingAnalysis: z.boolean(),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    exploitEvidence: z
+      .object({
+        vulnerabilityId: z.string(),
+        corroboratedBy: z.array(
+          z.enum([
+            'antivirus_signature',
+            'intrusion_signature',
+            'exploit_archive',
+            'internal_telemetry',
+          ])
+        ),
+        firstEvidenceAt: z.string().datetime({ offset: true }),
+        evidenceIsIncomplete: z.boolean().default(true),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    warningWasCorrect: z.boolean().optional(),
+    leadDaysRealised: z.number().int().optional(),
+    outcomeClass: z
+      .enum([
+        'true_positive',
+        'false_positive',
+        'missed_high_severity',
+        'missed_exploited',
+      ])
+      .optional(),
+  })
+  .passthrough();
+const BacktestListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          warningId: z.string(),
+          vulnerabilityId: z.string().optional(),
+          evaluatedAt: z.string().datetime({ offset: true }),
+          publishedSeverity: z
+            .object({
+              vulnerabilityId: z.string(),
+              baseScore: z.number(),
+              qualitativeRating: z.enum([
+                'none',
+                'low',
+                'medium',
+                'high',
+                'critical',
+              ]),
+              scoringStandard: z.enum(['v2', 'v3']),
+              publishedAt: z.string().datetime({ offset: true }),
+              awaitingAnalysis: z.boolean(),
+            })
+            .partial()
+            .passthrough()
+            .optional(),
+          exploitEvidence: z
+            .object({
+              vulnerabilityId: z.string(),
+              corroboratedBy: z.array(
+                z.enum([
+                  'antivirus_signature',
+                  'intrusion_signature',
+                  'exploit_archive',
+                  'internal_telemetry',
+                ])
+              ),
+              firstEvidenceAt: z.string().datetime({ offset: true }),
+              evidenceIsIncomplete: z.boolean().default(true),
+            })
+            .partial()
+            .passthrough()
+            .optional(),
+          warningWasCorrect: z.boolean().optional(),
+          leadDaysRealised: z.number().int().optional(),
+          outcomeClass: z
+            .enum([
+              'true_positive',
+              'false_positive',
+              'missed_high_severity',
+              'missed_exploited',
+            ])
+            .optional(),
+        })
+        .passthrough()
+    ),
+    nextCursor: z.string().optional(),
+  })
+  .passthrough();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+const BacktestListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              warningId: z.string(),
+              vulnerabilityId: z.string().optional(),
+              evaluatedAt: z.string().datetime({ offset: true }),
+              publishedSeverity: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  baseScore: z.number(),
+                  qualitativeRating: z.enum([
+                    'none',
+                    'low',
+                    'medium',
+                    'high',
+                    'critical',
+                  ]),
+                  scoringStandard: z.enum(['v2', 'v3']),
+                  publishedAt: z.string().datetime({ offset: true }),
+                  awaitingAnalysis: z.boolean(),
+                })
+                .partial()
+                .passthrough()
+                .optional(),
+              exploitEvidence: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  corroboratedBy: z.array(
+                    z.enum([
+                      'antivirus_signature',
+                      'intrusion_signature',
+                      'exploit_archive',
+                      'internal_telemetry',
+                    ])
+                  ),
+                  firstEvidenceAt: z.string().datetime({ offset: true }),
+                  evidenceIsIncomplete: z.boolean().default(true),
+                })
+                .partial()
+                .passthrough()
+                .optional(),
+              warningWasCorrect: z.boolean().optional(),
+              leadDaysRealised: z.number().int().optional(),
+              outcomeClass: z
+                .enum([
+                  'true_positive',
+                  'false_positive',
+                  'missed_high_severity',
+                  'missed_exploited',
+                ])
+                .optional(),
+            })
+            .passthrough()
+        ),
+        nextCursor: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const AccuracyReport = z
+  .object({
+    period: z.string(),
+    warningsIssued: z.number().int(),
+    precisionAtCapacity: z.number(),
+    precisionAgainstPublishedSeverity: z.number(),
+    precisionAgainstExploitation: z.number(),
+    exploitedCoverageShare: z.number(),
+    medianLeadDays: z.number(),
+    tenthPercentileLeadDays: z.number(),
+    missedExploitedCount: z.number().int(),
+    adverseFindingsDisclosed: z.string(),
+  })
+  .partial()
+  .passthrough();
+const AccuracyReportResponse = z
+  .object({
+    data: z
+      .object({
+        period: z.string(),
+        warningsIssued: z.number().int(),
+        precisionAtCapacity: z.number(),
+        precisionAgainstPublishedSeverity: z.number(),
+        precisionAgainstExploitation: z.number(),
+        exploitedCoverageShare: z.number(),
+        medianLeadDays: z.number(),
+        tenthPercentileLeadDays: z.number(),
+        missedExploitedCount: z.number().int(),
+        adverseFindingsDisclosed: z.string(),
+      })
+      .partial()
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const EvidentiaryTimelineRequest = z
+  .object({
+    purpose: z.enum([
+      'regulatory_review',
+      'insurance_claim',
+      'board_report',
+      'internal_investigation',
+    ]),
+    vulnerabilityIds: z.array(z.string()).optional(),
+    periodStart: z.string().optional(),
+    periodEnd: z.string().optional(),
+  })
+  .passthrough();
+const EvidentiaryTimeline = z
+  .object({
+    id: z.string(),
+    purpose: z.enum([
+      'regulatory_review',
+      'insurance_claim',
+      'board_report',
+      'internal_investigation',
+    ]),
+    assembledAt: z.string().datetime({ offset: true }),
+    assembledBy: z.string(),
+    manifestHash: z.string(),
+    entries: z.array(
+      z
+        .object({
+          at: z.string().datetime({ offset: true }),
+          event: z.enum([
+            'warning_issued',
+            'analyst_validated',
+            'decision_recorded',
+            'deferral_reviewed',
+            'window_completed',
+            'severity_published',
+            'exploitation_corroborated',
+          ]),
+          warningId: z.string(),
+          detail: z.string(),
+        })
+        .partial()
+        .passthrough()
+    ),
+  })
+  .partial()
+  .passthrough();
+const EvidentiaryTimelineResponse = z
+  .object({
+    data: z
+      .object({
+        id: z.string(),
+        purpose: z.enum([
+          'regulatory_review',
+          'insurance_claim',
+          'board_report',
+          'internal_investigation',
+        ]),
+        assembledAt: z.string().datetime({ offset: true }),
+        assembledBy: z.string(),
+        manifestHash: z.string(),
+        entries: z.array(
+          z
+            .object({
+              at: z.string().datetime({ offset: true }),
+              event: z.enum([
+                'warning_issued',
+                'analyst_validated',
+                'decision_recorded',
+                'deferral_reviewed',
+                'window_completed',
+                'severity_published',
+                'exploitation_corroborated',
+              ]),
+              warningId: z.string(),
+              detail: z.string(),
+            })
+            .partial()
+            .passthrough()
+        ),
+      })
+      .partial()
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export const schemas: any = {
+  assembleEvidentiaryTimeline_Body,
+  Problem,
+  PublishedSeverity,
+  ExploitEvidence,
+  Backtest,
+  BacktestListData,
+  ResponseMeta,
+  BacktestListResponse,
+  AccuracyReport,
+  AccuracyReportResponse,
+  EvidentiaryTimelineRequest,
+  EvidentiaryTimeline,
+  EvidentiaryTimelineResponse,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/assurance/accuracy-report',
+    alias: 'getAccuracyReport',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'period',
+        type: 'Query',
+        schema: z.string(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            period: z.string(),
+            warningsIssued: z.number().int(),
+            precisionAtCapacity: z.number(),
+            precisionAgainstPublishedSeverity: z.number(),
+            precisionAgainstExploitation: z.number(),
+            exploitedCoverageShare: z.number(),
+            medianLeadDays: z.number(),
+            tenthPercentileLeadDays: z.number(),
+            missedExploitedCount: z.number().int(),
+            adverseFindingsDisclosed: z.string(),
+          })
+          .partial()
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/assurance/backtests',
+    alias: 'listBacktests',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(200).optional().default(50),
+      },
+      {
+        name: 'vulnerabilityId',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  warningId: z.string(),
+                  vulnerabilityId: z.string().optional(),
+                  evaluatedAt: z.string().datetime({ offset: true }),
+                  publishedSeverity: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      baseScore: z.number(),
+                      qualitativeRating: z.enum([
+                        'none',
+                        'low',
+                        'medium',
+                        'high',
+                        'critical',
+                      ]),
+                      scoringStandard: z.enum(['v2', 'v3']),
+                      publishedAt: z.string().datetime({ offset: true }),
+                      awaitingAnalysis: z.boolean(),
+                    })
+                    .partial()
+                    .passthrough()
+                    .optional(),
+                  exploitEvidence: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      corroboratedBy: z.array(
+                        z.enum([
+                          'antivirus_signature',
+                          'intrusion_signature',
+                          'exploit_archive',
+                          'internal_telemetry',
+                        ])
+                      ),
+                      firstEvidenceAt: z.string().datetime({ offset: true }),
+                      evidenceIsIncomplete: z.boolean().default(true),
+                    })
+                    .partial()
+                    .passthrough()
+                    .optional(),
+                  warningWasCorrect: z.boolean().optional(),
+                  leadDaysRealised: z.number().int().optional(),
+                  outcomeClass: z
+                    .enum([
+                      'true_positive',
+                      'false_positive',
+                      'missed_high_severity',
+                      'missed_exploited',
+                    ])
+                    .optional(),
+                })
+                .passthrough()
+            ),
+            nextCursor: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/assurance/evidentiary-timeline',
+    alias: 'assembleEvidentiaryTimeline',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: assembleEvidentiaryTimeline_Body,
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            id: z.string(),
+            purpose: z.enum([
+              'regulatory_review',
+              'insurance_claim',
+              'board_report',
+              'internal_investigation',
+            ]),
+            assembledAt: z.string().datetime({ offset: true }),
+            assembledBy: z.string(),
+            manifestHash: z.string(),
+            entries: z.array(
+              z
+                .object({
+                  at: z.string().datetime({ offset: true }),
+                  event: z.enum([
+                    'warning_issued',
+                    'analyst_validated',
+                    'decision_recorded',
+                    'deferral_reviewed',
+                    'window_completed',
+                    'severity_published',
+                    'exploitation_corroborated',
+                  ]),
+                  warningId: z.string(),
+                  detail: z.string(),
+                })
+                .partial()
+                .passthrough()
+            ),
+          })
+          .partial()
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 422,
+        description: `Semantically invalid request (e.g. PACK_EMPTY)`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

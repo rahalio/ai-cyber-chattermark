@@ -1,19 +1,27 @@
 node_modules/
-.next/
 dist/
+.next/
 build/
 out/
 coverage/
-.turbo/
-.cache/
-*.log
+*.tsbuildinfo
 .DS_Store
 .env
 .env.*
 !.env.example
 *.pem
 .venv/
-__pycache__/
+.cache/
+**/node_modules/
+**/__pycache__/
+*.pyc
+test-results/
+playwright-report/
+*.log
+.turbo/
+
+# Bundled OpenAPI (generated)
+packages/openapi-core/src/.bundled/
 
 # Codegen — do not push
 .codegen/

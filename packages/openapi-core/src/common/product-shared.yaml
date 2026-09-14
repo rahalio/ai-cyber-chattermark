@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  title: Chattermark shared product schemas
+  version: 0.1.0
+  description: Cross-domain entities referenced by multiple Chattermark domains.
+paths: {}
+components:
+  schemas:
+    Source:
+      type: object
+      required: [id, handle, trustState]
+      x-dynamodb:
+        entityType: SOURCE
+        pkPatternTemplate: "TENANT#${tenantId}#SOURCE#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        handle:
+          type: string
+        platform:
+          type: string
+          enum: [social, blog, vendor_advisory, mailing_list]
+        trustState:
+          type: string
+          enum: [unrated, provisional, trusted, degraded, suppressed]
+        evaluatedWarnings:
+          type: integer
+        suspectedInauthentic:
+          type: boolean
+    Vulnerability:
+      type: object
+      required: [id]
+      x-dynamodb:
+        entityType: VULNERABILITY
+        pkPatternTemplate: "VULN#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+          example: CVE-2016-5195
+        title:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        firstSeenOnlineAt:
+          type: string
+          format: date-time
+        vendorAdvisoryAt:
+          type: string
+          format: date-time
+        databasePublishedAt:
+          type: string
+          format: date-time
+    PublishedSeverity:
+      type: object
+      properties:
+        vulnerabilityId:
+          type: string
+        baseScore:
+          type: number
+          format: float
+        qualitativeRating:
+          type: string
+          enum: [none, low, medium, high, critical]
+        scoringStandard:
+          type: string
+          enum: [v2, v3]
+        publishedAt:
+          type: string
+          format: date-time
+        awaitingAnalysis:
+          type: boolean
+    ExploitEvidence:
+      type: object
+      properties:
+        vulnerabilityId:
+          type: string
+        corroboratedBy:
+          type: array
+          items:
+            type: string
+            enum: [antivirus_signature, intrusion_signature, exploit_archive, internal_telemetry]
+        firstEvidenceAt:
+          type: string
+          format: date-time
+        evidenceIsIncomplete:
+          type: boolean
+          default: true
+    EstateItem:
+      type: object
+      required: [vendor, product]
+      properties:
+        assetGroupId:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        version:
+          type: string
+        instanceCount:
+          type: integer
+        businessCriticality:
+          type: string
+          enum: [low, medium, high, critical]
+        internetFacing:
+          type: boolean
+    EstateMatch:
+      type: object
+      required: [vulnerabilityId, applicable]
+      properties:
+        vulnerabilityId:
+          type: string
+        applicable:
+          type: boolean
+        suppressionReason:
+          type: string
+          enum: [product_not_present, version_not_affected, product_retired, platform_not_used]
+        matchedItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstateItem'
+        affectedInstanceCount:
+          type: integer
+        highestBusinessCriticality:
+          type: string
+          enum: [low, medium, high, critical]
+    Forecast:
+      type: object
+      required: [vulnerabilityId, score, scoringVersion]
+      x-dynamodb:
+        entityType: FORECAST
+        pkPatternTemplate: "TENANT#${tenantId}#FORECAST#${vulnerabilityId}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        vulnerabilityId:
+          type: string
+        score:
+          type: number
+          format: float
+        scoreAfterManipulationScreening:
+          type: number
+          format: float
+        independentCredibleSources:
+          type: integer
+        contributingSignalIds:
+          type: array
+          items:
+            type: string
+        topSources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        scoringVersion:
+          type: string
+        formedAt:
+          type: string
+          format: date-time
+        absenceIsNotSafety:
+          type: boolean
+          default: true

@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Governance schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    EscalationPolicy:
+      type: object
+      required: [minimumScore, minimumIndependentSources]
+      x-dynamodb:
+        entityType: ESCALATION_POLICY
+        pkPatternTemplate: "TENANT#${tenantId}#POLICY"
+        skPatternTemplate: "ESCALATION"
+        pkPattern: template
+      properties:
+        minimumScore:
+          type: number
+          format: float
+        minimumIndependentSources:
+          type: integer
+          minimum: 2
+        manipulationTolerance:
+          type: number
+          format: float
+        minimumSourceEvaluatedWarnings:
+          type: integer
+          default: 5
+        suppressNonApplicable:
+          type: boolean
+          default: true
+        deferralMaxDays:
+          type: integer
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    AuditEvent:
+      type: object
+      required: [id, at, actor, action]
+      x-dynamodb:
+        entityType: AUDIT_EVENT
+        pkPatternTemplate: "TENANT#${tenantId}#AUDIT#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        action:
+          type: string
+          enum: [policy_changed, warning_withdrawn, binding_resolved, source_suppressed, timeline_exported, scoring_version_activated]
+        detail:
+          type: string
+    EscalationPolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EscalationPolicy'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    AuditEventListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        nextCursor:
+          type: string
+    AuditEventListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AuditEventListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

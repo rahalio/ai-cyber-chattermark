@@ -1,0 +1,109 @@
+openapi: 3.1.0
+info:
+  title: Warnings API
+  version: 0.1.0
+  description: |
+    Policy-gated warning issuance, analyst validation, and capacity shortlist.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: wrn
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Warnings
+    description: Policy-gated warning issuance, analyst validation, and capacity shaping
+paths:
+  /v1/warnings:
+    get:
+      operationId: listWarnings
+      tags: [Warnings]
+      summary: List warnings
+      x-repository: Warning
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [issued, validated, escalated, decided, withdrawn]
+      responses:
+        '200':
+          description: Warnings page
+          content:
+            application/json:
+              schema:
+                $ref: ./warnings.schemas.yaml#/components/schemas/WarningListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/warnings/shortlist:
+    get:
+      operationId: getWarningShortlist
+      tags: [Warnings]
+      summary: Capacity-capped emergency-window shortlist
+      x-repository: none
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+        - name: capacity
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Shortlist sized to declared capacity
+          content:
+            application/json:
+              schema:
+                $ref: ./warnings.schemas.yaml#/components/schemas/ShortlistResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/warnings/{warningId}/validation:
+    parameters:
+      - name: warningId
+        in: path
+        required: true
+        schema:
+          $ref: ./warnings.schemas.yaml#/components/schemas/WarningId
+    post:
+      operationId: validateWarning
+      tags: [Warnings]
+      summary: Analyst validation of an issued warning
+      x-repository: Warning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./warnings.schemas.yaml#/components/schemas/WarningValidation
+      responses:
+        '200':
+          description: Warning after validation
+          content:
+            application/json:
+              schema:
+                $ref: ./warnings.schemas.yaml#/components/schemas/WarningResponse
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

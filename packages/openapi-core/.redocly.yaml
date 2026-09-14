@@ -1,0 +1,36 @@
+apis:
+  identity:
+    root: src/identity.yaml
+  signals:
+    root: src/signals.yaml
+  sources:
+    root: src/sources.yaml
+  forecasts:
+    root: src/forecasts.yaml
+  estate:
+    root: src/estate.yaml
+  warnings:
+    root: src/warnings.yaml
+  decisions:
+    root: src/decisions.yaml
+  assurance:
+    root: src/assurance.yaml
+  governance:
+    root: src/governance.yaml
+
+extends:
+  - recommended
+
+rules:
+  no-unused-components: off
+  operation-4xx-response: warn
+  info-license: off
+  info-license-url: off
+  tag-description: off
+  operation-operationId: error
+  no-invalid-media-type-examples: off
+
+theme:
+  openapi:
+    generateCodeSamples:
+      languages: []

@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: Signals schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    SignalId:
+      type: string
+      description: Signal identifier
+    EntityMention:
+      type: object
+      required: [surfaceForm]
+      properties:
+        surfaceForm:
+          type: string
+          example: Adobe Flash Player
+        normalisedVendor:
+          type: string
+        normalisedProduct:
+          type: string
+        maskedInScoring:
+          type: boolean
+          default: true
+    SeverityOpinion:
+      type: object
+      required: [threatAsserted, severityScore]
+      properties:
+        threatAsserted:
+          type: boolean
+        threatScore:
+          type: number
+          format: float
+        severityScore:
+          type: number
+          format: float
+        criteriaMatched:
+          type: array
+          items:
+            type: string
+            enum: [followers_should_worry, easily_exploitable, affects_many_users]
+        indicativePhrases:
+          type: array
+          items:
+            type: string
+        scoringVersion:
+          type: string
+    VulnerabilityBinding:
+      type: object
+      required: [status, method]
+      properties:
+        status:
+          type: string
+          enum: [bound, held_ambiguous, unbound]
+        vulnerabilityId:
+          type: string
+        method:
+          type: string
+          enum: [identifier_in_text, identifier_in_url, identifier_in_linked_page, analyst_resolved]
+        linkedUrl:
+          type: string
+        identifiersFoundOnPage:
+          type: integer
+        confidence:
+          type: number
+          format: float
+        resolvedBy:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+    VulnerabilityBindingResolve:
+      type: object
+      required: [vulnerabilityId, rationale]
+      properties:
+        vulnerabilityId:
+          type: string
+        rationale:
+          type: string
+    Signal:
+      type: object
+      required: [id, sourceId, postedAt, text]
+      x-dynamodb:
+        entityType: SIGNAL
+        pkPatternTemplate: "TENANT#${tenantId}#SIGNAL#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        sourceId:
+          type: string
+        postedAt:
+          type: string
+          format: date-time
+        text:
+          type: string
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityMention'
+        opinion:
+          $ref: '#/components/schemas/SeverityOpinion'
+        binding:
+          $ref: '#/components/schemas/VulnerabilityBinding'
+        nearDuplicateOf:
+          type: string
+    SignalIngest:
+      type: object
+      required: [sourceHandle, postedAt, text]
+      properties:
+        sourceHandle:
+          type: string
+        platform:
+          type: string
+          enum: [social, blog, vendor_advisory, mailing_list]
+        postedAt:
+          type: string
+          format: date-time
+        text:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+    SignalResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Signal'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    VulnerabilityBindingResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/VulnerabilityBinding'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    SignalListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Signal'
+        nextCursor:
+          type: string
+    SignalListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SignalListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

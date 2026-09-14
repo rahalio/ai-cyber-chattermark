@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: Sources API
+  version: 0.1.0
+  description: |
+    Source reliability ledger and manipulation findings.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: src
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Sources
+    description: Source reliability ledger and manipulation findings
+paths:
+  /v1/sources:
+    get:
+      operationId: listSources
+      tags: [Sources]
+      summary: List sources
+      x-repository: Source
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: trustState
+          in: query
+          schema:
+            type: string
+            enum: [unrated, provisional, trusted, degraded, suppressed]
+      responses:
+        '200':
+          description: Sources page
+          content:
+            application/json:
+              schema:
+                $ref: ./sources.schemas.yaml#/components/schemas/SourceListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/sources/{sourceId}/reliability:
+    parameters:
+      - name: sourceId
+        in: path
+        required: true
+        schema:
+          $ref: ./sources.schemas.yaml#/components/schemas/SourceId
+    get:
+      operationId: getSourceReliability
+      tags: [Sources]
+      summary: Get source reliability ledger entry
+      x-repository: SourceReliability
+      responses:
+        '200':
+          description: Reliability metrics
+          content:
+            application/json:
+              schema:
+                $ref: ./sources.schemas.yaml#/components/schemas/SourceReliabilityResponse
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/sources/manipulation-findings:
+    get:
+      operationId: listManipulationFindings
+      tags: [Sources]
+      summary: List manipulation findings
+      x-repository: ManipulationFinding
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Manipulation findings
+          content:
+            application/json:
+              schema:
+                $ref: ./sources.schemas.yaml#/components/schemas/ManipulationFindingListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

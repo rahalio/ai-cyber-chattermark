@@ -1,0 +1,98 @@
+openapi: 3.1.0
+info:
+  title: Assurance API
+  version: 0.1.0
+  description: |
+    Back-testing, self-reported accuracy, and evidentiary timelines.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: asr
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Assurance
+    description: Back-testing, self-reported accuracy, and evidentiary timelines
+paths:
+  /v1/assurance/backtests:
+    get:
+      operationId: listBacktests
+      tags: [Assurance]
+      summary: List back-tests
+      x-repository: Backtest
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Back-tests
+          content:
+            application/json:
+              schema:
+                $ref: ./assurance.schemas.yaml#/components/schemas/BacktestListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/assurance/accuracy-report:
+    get:
+      operationId: getAccuracyReport
+      tags: [Assurance]
+      summary: Get accuracy report for a period
+      x-repository: none
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accuracy report
+          content:
+            application/json:
+              schema:
+                $ref: ./assurance.schemas.yaml#/components/schemas/AccuracyReportResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/assurance/evidentiary-timeline:
+    post:
+      operationId: assembleEvidentiaryTimeline
+      tags: [Assurance]
+      summary: Assemble an evidentiary timeline export
+      x-repository: EvidentiaryTimeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./assurance.schemas.yaml#/components/schemas/EvidentiaryTimelineRequest
+      responses:
+        '200':
+          description: Timeline pack
+          content:
+            application/json:
+              schema:
+                $ref: ./assurance.schemas.yaml#/components/schemas/EvidentiaryTimelineResponse
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

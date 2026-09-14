@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: Decisions API
+  version: 0.1.0
+  description: |
+    Accept, defer, and decline records with accountable owners. Append-only.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: dec
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Decisions
+    description: Accept, defer, and decline records with accountable owners
+paths:
+  /v1/warnings/{warningId}/decision:
+    parameters:
+      - name: warningId
+        in: path
+        required: true
+        schema:
+          $ref: ./decisions.schemas.yaml#/components/schemas/WarningId
+    post:
+      operationId: createDecision
+      tags: [Decisions]
+      summary: Record a terminal decision on a warning
+      x-repository: Decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./decisions.schemas.yaml#/components/schemas/DecisionCreate
+      responses:
+        '201':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./decisions.schemas.yaml#/components/schemas/DecisionResponse
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/decisions:
+    get:
+      operationId: listDecisions
+      tags: [Decisions]
+      summary: List decisions
+      x-repository: Decision
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: outcome
+          in: query
+          schema:
+            type: string
+            enum: [window_opened, deferred, declined, mitigated_by_control]
+      responses:
+        '200':
+          description: Decisions page
+          content:
+            application/json:
+              schema:
+                $ref: ./decisions.schemas.yaml#/components/schemas/DecisionListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/decisions/deferrals/due:
+    get:
+      operationId: listDeferralsDue
+      tags: [Decisions]
+      summary: List deferrals due for review
+      x-repository: none
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: onOrBefore
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Deferrals due
+          content:
+            application/json:
+              schema:
+                $ref: ./decisions.schemas.yaml#/components/schemas/DeferralListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/decisions/{decisionId}/compensating-control:
+    parameters:
+      - name: decisionId
+        in: path
+        required: true
+        schema:
+          $ref: ./decisions.schemas.yaml#/components/schemas/DecisionId
+    put:
+      operationId: attachCompensatingControl
+      tags: [Decisions]
+      summary: Attach a compensating control to a decision
+      x-repository: Decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./decisions.schemas.yaml#/components/schemas/CompensatingControl
+      responses:
+        '200':
+          description: Decision with control
+          content:
+            application/json:
+              schema:
+                $ref: ./decisions.schemas.yaml#/components/schemas/DecisionResponse
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

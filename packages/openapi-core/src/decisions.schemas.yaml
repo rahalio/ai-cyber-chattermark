@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: Decisions schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    DecisionId:
+      type: string
+    WarningId:
+      type: string
+    CompensatingControl:
+      type: object
+      required: [description, assertedBy]
+      properties:
+        description:
+          type: string
+        controlType:
+          type: string
+          enum: [network_segmentation, virtual_patch, feature_disabled, access_restriction, monitoring_only]
+        assertedBy:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    Deferral:
+      type: object
+      required: [decisionId, reviewDate]
+      properties:
+        decisionId:
+          type: string
+        warningId:
+          type: string
+        reviewDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        reviewCount:
+          type: integer
+    ChangeWindow:
+      type: object
+      properties:
+        id:
+          type: string
+        scheduledStart:
+          type: string
+          format: date-time
+        scheduledEnd:
+          type: string
+          format: date-time
+        emergency:
+          type: boolean
+        changeRecordReference:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+    DecisionCreate:
+      type: object
+      required: [outcome, owner]
+      properties:
+        outcome:
+          type: string
+          enum: [window_opened, deferred, declined, mitigated_by_control]
+        owner:
+          type: string
+        reason:
+          type: string
+        reviewDate:
+          type: string
+          format: date
+        changeRecordReference:
+          type: string
+    Decision:
+      type: object
+      required: [id, warningId, outcome, owner, decidedAt]
+      x-dynamodb:
+        entityType: DECISION
+        pkPatternTemplate: "TENANT#${tenantId}#DECISION#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        warningId:
+          type: string
+        outcome:
+          type: string
+          enum: [window_opened, deferred, declined, mitigated_by_control]
+        owner:
+          type: string
+        reason:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        deferral:
+          $ref: '#/components/schemas/Deferral'
+        compensatingControl:
+          $ref: '#/components/schemas/CompensatingControl'
+        changeWindow:
+          $ref: '#/components/schemas/ChangeWindow'
+        appendOnly:
+          type: boolean
+          default: true
+    DecisionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Decision'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    DecisionListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Decision'
+        nextCursor:
+          type: string
+    DecisionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DecisionListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    DeferralListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deferral'
+        nextCursor:
+          type: string
+    DeferralListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DeferralListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

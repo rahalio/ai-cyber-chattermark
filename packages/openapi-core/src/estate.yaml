@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: Estate API
+  version: 0.1.0
+  description: |
+    Customer software inventory and applicability scoping. Tenant-private.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: est
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Estate
+    description: Customer software inventory and applicability scoping
+paths:
+  /v1/estate/items:
+    get:
+      operationId: listEstateItems
+      tags: [Estate]
+      summary: List estate items
+      x-repository: EstateItem
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+      responses:
+        '200':
+          description: Estate items
+          content:
+            application/json:
+              schema:
+                $ref: ./estate.schemas.yaml#/components/schemas/EstateItemListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: syncEstateItems
+      tags: [Estate]
+      summary: Sync estate inventory from an upstream system
+      x-repository: EstateItem
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./estate.schemas.yaml#/components/schemas/EstateSyncRequest
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: ./estate.schemas.yaml#/components/schemas/EstateSyncResultResponse
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/estate/matches:
+    get:
+      operationId: listEstateMatches
+      tags: [Estate]
+      summary: List estate applicability matches
+      x-repository: EstateMatch
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+        - name: applicableOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Estate matches
+          content:
+            application/json:
+              schema:
+                $ref: ./estate.schemas.yaml#/components/schemas/EstateMatchListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

@@ -1,0 +1,8 @@
+.strip {
+  margin: 0 0 1.25rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--cm-storm-slate);
+  background: rgba(28, 36, 48, 0.06);
+  border-left: 3px solid var(--cm-signal-orange);
+}

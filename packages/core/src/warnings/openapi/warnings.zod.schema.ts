@@ -1,0 +1,1470 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const validateWarning_Body = z
+  .object({
+    outcome: z.enum(['confirm', 'raise', 'lower', 'withdraw']),
+    rationale: z.string().optional(),
+    assignedOwner: z.string().optional(),
+  })
+  .passthrough();
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const Vulnerability = z
+  .object({
+    id: z.string(),
+    title: z.string().optional(),
+    vendor: z.string().optional(),
+    product: z.string().optional(),
+    firstSeenOnlineAt: z.string().datetime({ offset: true }).optional(),
+    vendorAdvisoryAt: z.string().datetime({ offset: true }).optional(),
+    databasePublishedAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .passthrough();
+const Source = z
+  .object({
+    id: z.string(),
+    handle: z.string(),
+    platform: z
+      .enum(['social', 'blog', 'vendor_advisory', 'mailing_list'])
+      .optional(),
+    trustState: z.enum([
+      'unrated',
+      'provisional',
+      'trusted',
+      'degraded',
+      'suppressed',
+    ]),
+    evaluatedWarnings: z.number().int().optional(),
+    suspectedInauthentic: z.boolean().optional(),
+  })
+  .passthrough();
+const Forecast = z
+  .object({
+    vulnerabilityId: z.string(),
+    score: z.number(),
+    scoreAfterManipulationScreening: z.number().optional(),
+    independentCredibleSources: z.number().int().optional(),
+    contributingSignalIds: z.array(z.string()).optional(),
+    topSources: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            handle: z.string(),
+            platform: z
+              .enum(['social', 'blog', 'vendor_advisory', 'mailing_list'])
+              .optional(),
+            trustState: z.enum([
+              'unrated',
+              'provisional',
+              'trusted',
+              'degraded',
+              'suppressed',
+            ]),
+            evaluatedWarnings: z.number().int().optional(),
+            suspectedInauthentic: z.boolean().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    scoringVersion: z.string(),
+    formedAt: z.string().datetime({ offset: true }).optional(),
+    absenceIsNotSafety: z.boolean().optional().default(true),
+  })
+  .passthrough();
+const EstateItem = z
+  .object({
+    assetGroupId: z.string().optional(),
+    vendor: z.string(),
+    product: z.string(),
+    version: z.string().optional(),
+    instanceCount: z.number().int().optional(),
+    businessCriticality: z
+      .enum(['low', 'medium', 'high', 'critical'])
+      .optional(),
+    internetFacing: z.boolean().optional(),
+  })
+  .passthrough();
+const EstateMatch = z
+  .object({
+    vulnerabilityId: z.string(),
+    applicable: z.boolean(),
+    suppressionReason: z
+      .enum([
+        'product_not_present',
+        'version_not_affected',
+        'product_retired',
+        'platform_not_used',
+      ])
+      .optional(),
+    matchedItems: z
+      .array(
+        z
+          .object({
+            assetGroupId: z.string().optional(),
+            vendor: z.string(),
+            product: z.string(),
+            version: z.string().optional(),
+            instanceCount: z.number().int().optional(),
+            businessCriticality: z
+              .enum(['low', 'medium', 'high', 'critical'])
+              .optional(),
+            internetFacing: z.boolean().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    affectedInstanceCount: z.number().int().optional(),
+    highestBusinessCriticality: z
+      .enum(['low', 'medium', 'high', 'critical'])
+      .optional(),
+  })
+  .passthrough();
+const Warning = z
+  .object({
+    id: z.string(),
+    vulnerabilityId: z.string(),
+    status: z.enum([
+      'issued',
+      'validated',
+      'escalated',
+      'decided',
+      'withdrawn',
+    ]),
+    issuedAt: z.string().datetime({ offset: true }),
+    vulnerability: z
+      .object({
+        id: z.string(),
+        title: z.string().optional(),
+        vendor: z.string().optional(),
+        product: z.string().optional(),
+        firstSeenOnlineAt: z.string().datetime({ offset: true }).optional(),
+        vendorAdvisoryAt: z.string().datetime({ offset: true }).optional(),
+        databasePublishedAt: z.string().datetime({ offset: true }).optional(),
+      })
+      .passthrough()
+      .optional(),
+    forecastSnapshot: z
+      .object({
+        vulnerabilityId: z.string(),
+        score: z.number(),
+        scoreAfterManipulationScreening: z.number().optional(),
+        independentCredibleSources: z.number().int().optional(),
+        contributingSignalIds: z.array(z.string()).optional(),
+        topSources: z
+          .array(
+            z
+              .object({
+                id: z.string(),
+                handle: z.string(),
+                platform: z
+                  .enum(['social', 'blog', 'vendor_advisory', 'mailing_list'])
+                  .optional(),
+                trustState: z.enum([
+                  'unrated',
+                  'provisional',
+                  'trusted',
+                  'degraded',
+                  'suppressed',
+                ]),
+                evaluatedWarnings: z.number().int().optional(),
+                suspectedInauthentic: z.boolean().optional(),
+              })
+              .passthrough()
+          )
+          .optional(),
+        scoringVersion: z.string(),
+        formedAt: z.string().datetime({ offset: true }).optional(),
+        absenceIsNotSafety: z.boolean().optional().default(true),
+      })
+      .passthrough()
+      .optional(),
+    estateMatch: z
+      .object({
+        vulnerabilityId: z.string(),
+        applicable: z.boolean(),
+        suppressionReason: z
+          .enum([
+            'product_not_present',
+            'version_not_affected',
+            'product_retired',
+            'platform_not_used',
+          ])
+          .optional(),
+        matchedItems: z
+          .array(
+            z
+              .object({
+                assetGroupId: z.string().optional(),
+                vendor: z.string(),
+                product: z.string(),
+                version: z.string().optional(),
+                instanceCount: z.number().int().optional(),
+                businessCriticality: z
+                  .enum(['low', 'medium', 'high', 'critical'])
+                  .optional(),
+                internetFacing: z.boolean().optional(),
+              })
+              .passthrough()
+          )
+          .optional(),
+        affectedInstanceCount: z.number().int().optional(),
+        highestBusinessCriticality: z
+          .enum(['low', 'medium', 'high', 'critical'])
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+    assignedOwner: z.string().optional(),
+    leadDaysAheadOfAdvisory: z.number().int().optional(),
+    leadDaysAheadOfPublication: z.number().int().optional(),
+    analystAdjustment: z.enum(['none', 'raised', 'lowered']).optional(),
+    analystRationale: z.string().optional(),
+    withdrawalReason: z.string().optional(),
+  })
+  .passthrough();
+const WarningListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          id: z.string(),
+          vulnerabilityId: z.string(),
+          status: z.enum([
+            'issued',
+            'validated',
+            'escalated',
+            'decided',
+            'withdrawn',
+          ]),
+          issuedAt: z.string().datetime({ offset: true }),
+          vulnerability: z
+            .object({
+              id: z.string(),
+              title: z.string().optional(),
+              vendor: z.string().optional(),
+              product: z.string().optional(),
+              firstSeenOnlineAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+              vendorAdvisoryAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+              databasePublishedAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+            })
+            .passthrough()
+            .optional(),
+          forecastSnapshot: z
+            .object({
+              vulnerabilityId: z.string(),
+              score: z.number(),
+              scoreAfterManipulationScreening: z.number().optional(),
+              independentCredibleSources: z.number().int().optional(),
+              contributingSignalIds: z.array(z.string()).optional(),
+              topSources: z
+                .array(
+                  z
+                    .object({
+                      id: z.string(),
+                      handle: z.string(),
+                      platform: z
+                        .enum([
+                          'social',
+                          'blog',
+                          'vendor_advisory',
+                          'mailing_list',
+                        ])
+                        .optional(),
+                      trustState: z.enum([
+                        'unrated',
+                        'provisional',
+                        'trusted',
+                        'degraded',
+                        'suppressed',
+                      ]),
+                      evaluatedWarnings: z.number().int().optional(),
+                      suspectedInauthentic: z.boolean().optional(),
+                    })
+                    .passthrough()
+                )
+                .optional(),
+              scoringVersion: z.string(),
+              formedAt: z.string().datetime({ offset: true }).optional(),
+              absenceIsNotSafety: z.boolean().optional().default(true),
+            })
+            .passthrough()
+            .optional(),
+          estateMatch: z
+            .object({
+              vulnerabilityId: z.string(),
+              applicable: z.boolean(),
+              suppressionReason: z
+                .enum([
+                  'product_not_present',
+                  'version_not_affected',
+                  'product_retired',
+                  'platform_not_used',
+                ])
+                .optional(),
+              matchedItems: z
+                .array(
+                  z
+                    .object({
+                      assetGroupId: z.string().optional(),
+                      vendor: z.string(),
+                      product: z.string(),
+                      version: z.string().optional(),
+                      instanceCount: z.number().int().optional(),
+                      businessCriticality: z
+                        .enum(['low', 'medium', 'high', 'critical'])
+                        .optional(),
+                      internetFacing: z.boolean().optional(),
+                    })
+                    .passthrough()
+                )
+                .optional(),
+              affectedInstanceCount: z.number().int().optional(),
+              highestBusinessCriticality: z
+                .enum(['low', 'medium', 'high', 'critical'])
+                .optional(),
+            })
+            .passthrough()
+            .optional(),
+          assignedOwner: z.string().optional(),
+          leadDaysAheadOfAdvisory: z.number().int().optional(),
+          leadDaysAheadOfPublication: z.number().int().optional(),
+          analystAdjustment: z.enum(['none', 'raised', 'lowered']).optional(),
+          analystRationale: z.string().optional(),
+          withdrawalReason: z.string().optional(),
+        })
+        .passthrough()
+    ),
+    nextCursor: z.string().optional(),
+  })
+  .passthrough();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+const WarningListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              id: z.string(),
+              vulnerabilityId: z.string(),
+              status: z.enum([
+                'issued',
+                'validated',
+                'escalated',
+                'decided',
+                'withdrawn',
+              ]),
+              issuedAt: z.string().datetime({ offset: true }),
+              vulnerability: z
+                .object({
+                  id: z.string(),
+                  title: z.string().optional(),
+                  vendor: z.string().optional(),
+                  product: z.string().optional(),
+                  firstSeenOnlineAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                  vendorAdvisoryAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                  databasePublishedAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                })
+                .passthrough()
+                .optional(),
+              forecastSnapshot: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  score: z.number(),
+                  scoreAfterManipulationScreening: z.number().optional(),
+                  independentCredibleSources: z.number().int().optional(),
+                  contributingSignalIds: z.array(z.string()).optional(),
+                  topSources: z
+                    .array(
+                      z
+                        .object({
+                          id: z.string(),
+                          handle: z.string(),
+                          platform: z
+                            .enum([
+                              'social',
+                              'blog',
+                              'vendor_advisory',
+                              'mailing_list',
+                            ])
+                            .optional(),
+                          trustState: z.enum([
+                            'unrated',
+                            'provisional',
+                            'trusted',
+                            'degraded',
+                            'suppressed',
+                          ]),
+                          evaluatedWarnings: z.number().int().optional(),
+                          suspectedInauthentic: z.boolean().optional(),
+                        })
+                        .passthrough()
+                    )
+                    .optional(),
+                  scoringVersion: z.string(),
+                  formedAt: z.string().datetime({ offset: true }).optional(),
+                  absenceIsNotSafety: z.boolean().optional().default(true),
+                })
+                .passthrough()
+                .optional(),
+              estateMatch: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  applicable: z.boolean(),
+                  suppressionReason: z
+                    .enum([
+                      'product_not_present',
+                      'version_not_affected',
+                      'product_retired',
+                      'platform_not_used',
+                    ])
+                    .optional(),
+                  matchedItems: z
+                    .array(
+                      z
+                        .object({
+                          assetGroupId: z.string().optional(),
+                          vendor: z.string(),
+                          product: z.string(),
+                          version: z.string().optional(),
+                          instanceCount: z.number().int().optional(),
+                          businessCriticality: z
+                            .enum(['low', 'medium', 'high', 'critical'])
+                            .optional(),
+                          internetFacing: z.boolean().optional(),
+                        })
+                        .passthrough()
+                    )
+                    .optional(),
+                  affectedInstanceCount: z.number().int().optional(),
+                  highestBusinessCriticality: z
+                    .enum(['low', 'medium', 'high', 'critical'])
+                    .optional(),
+                })
+                .passthrough()
+                .optional(),
+              assignedOwner: z.string().optional(),
+              leadDaysAheadOfAdvisory: z.number().int().optional(),
+              leadDaysAheadOfPublication: z.number().int().optional(),
+              analystAdjustment: z
+                .enum(['none', 'raised', 'lowered'])
+                .optional(),
+              analystRationale: z.string().optional(),
+              withdrawalReason: z.string().optional(),
+            })
+            .passthrough()
+        ),
+        nextCursor: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const Shortlist = z
+  .object({
+    period: z.string(),
+    declaredCapacity: z.number().int(),
+    warnings: z.array(
+      z
+        .object({
+          id: z.string(),
+          vulnerabilityId: z.string(),
+          status: z.enum([
+            'issued',
+            'validated',
+            'escalated',
+            'decided',
+            'withdrawn',
+          ]),
+          issuedAt: z.string().datetime({ offset: true }),
+          vulnerability: z
+            .object({
+              id: z.string(),
+              title: z.string().optional(),
+              vendor: z.string().optional(),
+              product: z.string().optional(),
+              firstSeenOnlineAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+              vendorAdvisoryAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+              databasePublishedAt: z
+                .string()
+                .datetime({ offset: true })
+                .optional(),
+            })
+            .passthrough()
+            .optional(),
+          forecastSnapshot: z
+            .object({
+              vulnerabilityId: z.string(),
+              score: z.number(),
+              scoreAfterManipulationScreening: z.number().optional(),
+              independentCredibleSources: z.number().int().optional(),
+              contributingSignalIds: z.array(z.string()).optional(),
+              topSources: z
+                .array(
+                  z
+                    .object({
+                      id: z.string(),
+                      handle: z.string(),
+                      platform: z
+                        .enum([
+                          'social',
+                          'blog',
+                          'vendor_advisory',
+                          'mailing_list',
+                        ])
+                        .optional(),
+                      trustState: z.enum([
+                        'unrated',
+                        'provisional',
+                        'trusted',
+                        'degraded',
+                        'suppressed',
+                      ]),
+                      evaluatedWarnings: z.number().int().optional(),
+                      suspectedInauthentic: z.boolean().optional(),
+                    })
+                    .passthrough()
+                )
+                .optional(),
+              scoringVersion: z.string(),
+              formedAt: z.string().datetime({ offset: true }).optional(),
+              absenceIsNotSafety: z.boolean().optional().default(true),
+            })
+            .passthrough()
+            .optional(),
+          estateMatch: z
+            .object({
+              vulnerabilityId: z.string(),
+              applicable: z.boolean(),
+              suppressionReason: z
+                .enum([
+                  'product_not_present',
+                  'version_not_affected',
+                  'product_retired',
+                  'platform_not_used',
+                ])
+                .optional(),
+              matchedItems: z
+                .array(
+                  z
+                    .object({
+                      assetGroupId: z.string().optional(),
+                      vendor: z.string(),
+                      product: z.string(),
+                      version: z.string().optional(),
+                      instanceCount: z.number().int().optional(),
+                      businessCriticality: z
+                        .enum(['low', 'medium', 'high', 'critical'])
+                        .optional(),
+                      internetFacing: z.boolean().optional(),
+                    })
+                    .passthrough()
+                )
+                .optional(),
+              affectedInstanceCount: z.number().int().optional(),
+              highestBusinessCriticality: z
+                .enum(['low', 'medium', 'high', 'critical'])
+                .optional(),
+            })
+            .passthrough()
+            .optional(),
+          assignedOwner: z.string().optional(),
+          leadDaysAheadOfAdvisory: z.number().int().optional(),
+          leadDaysAheadOfPublication: z.number().int().optional(),
+          analystAdjustment: z.enum(['none', 'raised', 'lowered']).optional(),
+          analystRationale: z.string().optional(),
+          withdrawalReason: z.string().optional(),
+        })
+        .passthrough()
+    ),
+    omittedWarningCount: z.number().int(),
+    capacityStatement: z.string(),
+  })
+  .partial()
+  .passthrough();
+const ShortlistResponse = z
+  .object({
+    data: z
+      .object({
+        period: z.string(),
+        declaredCapacity: z.number().int(),
+        warnings: z.array(
+          z
+            .object({
+              id: z.string(),
+              vulnerabilityId: z.string(),
+              status: z.enum([
+                'issued',
+                'validated',
+                'escalated',
+                'decided',
+                'withdrawn',
+              ]),
+              issuedAt: z.string().datetime({ offset: true }),
+              vulnerability: z
+                .object({
+                  id: z.string(),
+                  title: z.string().optional(),
+                  vendor: z.string().optional(),
+                  product: z.string().optional(),
+                  firstSeenOnlineAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                  vendorAdvisoryAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                  databasePublishedAt: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
+                })
+                .passthrough()
+                .optional(),
+              forecastSnapshot: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  score: z.number(),
+                  scoreAfterManipulationScreening: z.number().optional(),
+                  independentCredibleSources: z.number().int().optional(),
+                  contributingSignalIds: z.array(z.string()).optional(),
+                  topSources: z
+                    .array(
+                      z
+                        .object({
+                          id: z.string(),
+                          handle: z.string(),
+                          platform: z
+                            .enum([
+                              'social',
+                              'blog',
+                              'vendor_advisory',
+                              'mailing_list',
+                            ])
+                            .optional(),
+                          trustState: z.enum([
+                            'unrated',
+                            'provisional',
+                            'trusted',
+                            'degraded',
+                            'suppressed',
+                          ]),
+                          evaluatedWarnings: z.number().int().optional(),
+                          suspectedInauthentic: z.boolean().optional(),
+                        })
+                        .passthrough()
+                    )
+                    .optional(),
+                  scoringVersion: z.string(),
+                  formedAt: z.string().datetime({ offset: true }).optional(),
+                  absenceIsNotSafety: z.boolean().optional().default(true),
+                })
+                .passthrough()
+                .optional(),
+              estateMatch: z
+                .object({
+                  vulnerabilityId: z.string(),
+                  applicable: z.boolean(),
+                  suppressionReason: z
+                    .enum([
+                      'product_not_present',
+                      'version_not_affected',
+                      'product_retired',
+                      'platform_not_used',
+                    ])
+                    .optional(),
+                  matchedItems: z
+                    .array(
+                      z
+                        .object({
+                          assetGroupId: z.string().optional(),
+                          vendor: z.string(),
+                          product: z.string(),
+                          version: z.string().optional(),
+                          instanceCount: z.number().int().optional(),
+                          businessCriticality: z
+                            .enum(['low', 'medium', 'high', 'critical'])
+                            .optional(),
+                          internetFacing: z.boolean().optional(),
+                        })
+                        .passthrough()
+                    )
+                    .optional(),
+                  affectedInstanceCount: z.number().int().optional(),
+                  highestBusinessCriticality: z
+                    .enum(['low', 'medium', 'high', 'critical'])
+                    .optional(),
+                })
+                .passthrough()
+                .optional(),
+              assignedOwner: z.string().optional(),
+              leadDaysAheadOfAdvisory: z.number().int().optional(),
+              leadDaysAheadOfPublication: z.number().int().optional(),
+              analystAdjustment: z
+                .enum(['none', 'raised', 'lowered'])
+                .optional(),
+              analystRationale: z.string().optional(),
+              withdrawalReason: z.string().optional(),
+            })
+            .passthrough()
+        ),
+        omittedWarningCount: z.number().int(),
+        capacityStatement: z.string(),
+      })
+      .partial()
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const WarningId = z.string();
+const WarningValidation = z
+  .object({
+    outcome: z.enum(['confirm', 'raise', 'lower', 'withdraw']),
+    rationale: z.string().optional(),
+    assignedOwner: z.string().optional(),
+  })
+  .passthrough();
+const WarningResponse = z
+  .object({
+    data: z
+      .object({
+        id: z.string(),
+        vulnerabilityId: z.string(),
+        status: z.enum([
+          'issued',
+          'validated',
+          'escalated',
+          'decided',
+          'withdrawn',
+        ]),
+        issuedAt: z.string().datetime({ offset: true }),
+        vulnerability: z
+          .object({
+            id: z.string(),
+            title: z.string().optional(),
+            vendor: z.string().optional(),
+            product: z.string().optional(),
+            firstSeenOnlineAt: z.string().datetime({ offset: true }).optional(),
+            vendorAdvisoryAt: z.string().datetime({ offset: true }).optional(),
+            databasePublishedAt: z
+              .string()
+              .datetime({ offset: true })
+              .optional(),
+          })
+          .passthrough()
+          .optional(),
+        forecastSnapshot: z
+          .object({
+            vulnerabilityId: z.string(),
+            score: z.number(),
+            scoreAfterManipulationScreening: z.number().optional(),
+            independentCredibleSources: z.number().int().optional(),
+            contributingSignalIds: z.array(z.string()).optional(),
+            topSources: z
+              .array(
+                z
+                  .object({
+                    id: z.string(),
+                    handle: z.string(),
+                    platform: z
+                      .enum([
+                        'social',
+                        'blog',
+                        'vendor_advisory',
+                        'mailing_list',
+                      ])
+                      .optional(),
+                    trustState: z.enum([
+                      'unrated',
+                      'provisional',
+                      'trusted',
+                      'degraded',
+                      'suppressed',
+                    ]),
+                    evaluatedWarnings: z.number().int().optional(),
+                    suspectedInauthentic: z.boolean().optional(),
+                  })
+                  .passthrough()
+              )
+              .optional(),
+            scoringVersion: z.string(),
+            formedAt: z.string().datetime({ offset: true }).optional(),
+            absenceIsNotSafety: z.boolean().optional().default(true),
+          })
+          .passthrough()
+          .optional(),
+        estateMatch: z
+          .object({
+            vulnerabilityId: z.string(),
+            applicable: z.boolean(),
+            suppressionReason: z
+              .enum([
+                'product_not_present',
+                'version_not_affected',
+                'product_retired',
+                'platform_not_used',
+              ])
+              .optional(),
+            matchedItems: z
+              .array(
+                z
+                  .object({
+                    assetGroupId: z.string().optional(),
+                    vendor: z.string(),
+                    product: z.string(),
+                    version: z.string().optional(),
+                    instanceCount: z.number().int().optional(),
+                    businessCriticality: z
+                      .enum(['low', 'medium', 'high', 'critical'])
+                      .optional(),
+                    internetFacing: z.boolean().optional(),
+                  })
+                  .passthrough()
+              )
+              .optional(),
+            affectedInstanceCount: z.number().int().optional(),
+            highestBusinessCriticality: z
+              .enum(['low', 'medium', 'high', 'critical'])
+              .optional(),
+          })
+          .passthrough()
+          .optional(),
+        assignedOwner: z.string().optional(),
+        leadDaysAheadOfAdvisory: z.number().int().optional(),
+        leadDaysAheadOfPublication: z.number().int().optional(),
+        analystAdjustment: z.enum(['none', 'raised', 'lowered']).optional(),
+        analystRationale: z.string().optional(),
+        withdrawalReason: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export const schemas: any = {
+  validateWarning_Body,
+  Problem,
+  Vulnerability,
+  Source,
+  Forecast,
+  EstateItem,
+  EstateMatch,
+  Warning,
+  WarningListData,
+  ResponseMeta,
+  WarningListResponse,
+  Shortlist,
+  ShortlistResponse,
+  WarningId,
+  WarningValidation,
+  WarningResponse,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/warnings',
+    alias: 'listWarnings',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(200).optional().default(50),
+      },
+      {
+        name: 'status',
+        type: 'Query',
+        schema: z
+          .enum(['issued', 'validated', 'escalated', 'decided', 'withdrawn'])
+          .optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  id: z.string(),
+                  vulnerabilityId: z.string(),
+                  status: z.enum([
+                    'issued',
+                    'validated',
+                    'escalated',
+                    'decided',
+                    'withdrawn',
+                  ]),
+                  issuedAt: z.string().datetime({ offset: true }),
+                  vulnerability: z
+                    .object({
+                      id: z.string(),
+                      title: z.string().optional(),
+                      vendor: z.string().optional(),
+                      product: z.string().optional(),
+                      firstSeenOnlineAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      vendorAdvisoryAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      databasePublishedAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                    })
+                    .passthrough()
+                    .optional(),
+                  forecastSnapshot: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      score: z.number(),
+                      scoreAfterManipulationScreening: z.number().optional(),
+                      independentCredibleSources: z.number().int().optional(),
+                      contributingSignalIds: z.array(z.string()).optional(),
+                      topSources: z
+                        .array(
+                          z
+                            .object({
+                              id: z.string(),
+                              handle: z.string(),
+                              platform: z
+                                .enum([
+                                  'social',
+                                  'blog',
+                                  'vendor_advisory',
+                                  'mailing_list',
+                                ])
+                                .optional(),
+                              trustState: z.enum([
+                                'unrated',
+                                'provisional',
+                                'trusted',
+                                'degraded',
+                                'suppressed',
+                              ]),
+                              evaluatedWarnings: z.number().int().optional(),
+                              suspectedInauthentic: z.boolean().optional(),
+                            })
+                            .passthrough()
+                        )
+                        .optional(),
+                      scoringVersion: z.string(),
+                      formedAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      absenceIsNotSafety: z.boolean().optional().default(true),
+                    })
+                    .passthrough()
+                    .optional(),
+                  estateMatch: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      applicable: z.boolean(),
+                      suppressionReason: z
+                        .enum([
+                          'product_not_present',
+                          'version_not_affected',
+                          'product_retired',
+                          'platform_not_used',
+                        ])
+                        .optional(),
+                      matchedItems: z
+                        .array(
+                          z
+                            .object({
+                              assetGroupId: z.string().optional(),
+                              vendor: z.string(),
+                              product: z.string(),
+                              version: z.string().optional(),
+                              instanceCount: z.number().int().optional(),
+                              businessCriticality: z
+                                .enum(['low', 'medium', 'high', 'critical'])
+                                .optional(),
+                              internetFacing: z.boolean().optional(),
+                            })
+                            .passthrough()
+                        )
+                        .optional(),
+                      affectedInstanceCount: z.number().int().optional(),
+                      highestBusinessCriticality: z
+                        .enum(['low', 'medium', 'high', 'critical'])
+                        .optional(),
+                    })
+                    .passthrough()
+                    .optional(),
+                  assignedOwner: z.string().optional(),
+                  leadDaysAheadOfAdvisory: z.number().int().optional(),
+                  leadDaysAheadOfPublication: z.number().int().optional(),
+                  analystAdjustment: z
+                    .enum(['none', 'raised', 'lowered'])
+                    .optional(),
+                  analystRationale: z.string().optional(),
+                  withdrawalReason: z.string().optional(),
+                })
+                .passthrough()
+            ),
+            nextCursor: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/warnings/:warningId/validation',
+    alias: 'validateWarning',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: validateWarning_Body,
+      },
+      {
+        name: 'warningId',
+        type: 'Path',
+        schema: z.string(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            id: z.string(),
+            vulnerabilityId: z.string(),
+            status: z.enum([
+              'issued',
+              'validated',
+              'escalated',
+              'decided',
+              'withdrawn',
+            ]),
+            issuedAt: z.string().datetime({ offset: true }),
+            vulnerability: z
+              .object({
+                id: z.string(),
+                title: z.string().optional(),
+                vendor: z.string().optional(),
+                product: z.string().optional(),
+                firstSeenOnlineAt: z
+                  .string()
+                  .datetime({ offset: true })
+                  .optional(),
+                vendorAdvisoryAt: z
+                  .string()
+                  .datetime({ offset: true })
+                  .optional(),
+                databasePublishedAt: z
+                  .string()
+                  .datetime({ offset: true })
+                  .optional(),
+              })
+              .passthrough()
+              .optional(),
+            forecastSnapshot: z
+              .object({
+                vulnerabilityId: z.string(),
+                score: z.number(),
+                scoreAfterManipulationScreening: z.number().optional(),
+                independentCredibleSources: z.number().int().optional(),
+                contributingSignalIds: z.array(z.string()).optional(),
+                topSources: z
+                  .array(
+                    z
+                      .object({
+                        id: z.string(),
+                        handle: z.string(),
+                        platform: z
+                          .enum([
+                            'social',
+                            'blog',
+                            'vendor_advisory',
+                            'mailing_list',
+                          ])
+                          .optional(),
+                        trustState: z.enum([
+                          'unrated',
+                          'provisional',
+                          'trusted',
+                          'degraded',
+                          'suppressed',
+                        ]),
+                        evaluatedWarnings: z.number().int().optional(),
+                        suspectedInauthentic: z.boolean().optional(),
+                      })
+                      .passthrough()
+                  )
+                  .optional(),
+                scoringVersion: z.string(),
+                formedAt: z.string().datetime({ offset: true }).optional(),
+                absenceIsNotSafety: z.boolean().optional().default(true),
+              })
+              .passthrough()
+              .optional(),
+            estateMatch: z
+              .object({
+                vulnerabilityId: z.string(),
+                applicable: z.boolean(),
+                suppressionReason: z
+                  .enum([
+                    'product_not_present',
+                    'version_not_affected',
+                    'product_retired',
+                    'platform_not_used',
+                  ])
+                  .optional(),
+                matchedItems: z
+                  .array(
+                    z
+                      .object({
+                        assetGroupId: z.string().optional(),
+                        vendor: z.string(),
+                        product: z.string(),
+                        version: z.string().optional(),
+                        instanceCount: z.number().int().optional(),
+                        businessCriticality: z
+                          .enum(['low', 'medium', 'high', 'critical'])
+                          .optional(),
+                        internetFacing: z.boolean().optional(),
+                      })
+                      .passthrough()
+                  )
+                  .optional(),
+                affectedInstanceCount: z.number().int().optional(),
+                highestBusinessCriticality: z
+                  .enum(['low', 'medium', 'high', 'critical'])
+                  .optional(),
+              })
+              .passthrough()
+              .optional(),
+            assignedOwner: z.string().optional(),
+            leadDaysAheadOfAdvisory: z.number().int().optional(),
+            leadDaysAheadOfPublication: z.number().int().optional(),
+            analystAdjustment: z.enum(['none', 'raised', 'lowered']).optional(),
+            analystRationale: z.string().optional(),
+            withdrawalReason: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 422,
+        description: `Semantically invalid request (e.g. PACK_EMPTY)`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/warnings/shortlist',
+    alias: 'getWarningShortlist',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'period',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'capacity',
+        type: 'Query',
+        schema: z.number().int().gte(1).optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            period: z.string(),
+            declaredCapacity: z.number().int(),
+            warnings: z.array(
+              z
+                .object({
+                  id: z.string(),
+                  vulnerabilityId: z.string(),
+                  status: z.enum([
+                    'issued',
+                    'validated',
+                    'escalated',
+                    'decided',
+                    'withdrawn',
+                  ]),
+                  issuedAt: z.string().datetime({ offset: true }),
+                  vulnerability: z
+                    .object({
+                      id: z.string(),
+                      title: z.string().optional(),
+                      vendor: z.string().optional(),
+                      product: z.string().optional(),
+                      firstSeenOnlineAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      vendorAdvisoryAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      databasePublishedAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                    })
+                    .passthrough()
+                    .optional(),
+                  forecastSnapshot: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      score: z.number(),
+                      scoreAfterManipulationScreening: z.number().optional(),
+                      independentCredibleSources: z.number().int().optional(),
+                      contributingSignalIds: z.array(z.string()).optional(),
+                      topSources: z
+                        .array(
+                          z
+                            .object({
+                              id: z.string(),
+                              handle: z.string(),
+                              platform: z
+                                .enum([
+                                  'social',
+                                  'blog',
+                                  'vendor_advisory',
+                                  'mailing_list',
+                                ])
+                                .optional(),
+                              trustState: z.enum([
+                                'unrated',
+                                'provisional',
+                                'trusted',
+                                'degraded',
+                                'suppressed',
+                              ]),
+                              evaluatedWarnings: z.number().int().optional(),
+                              suspectedInauthentic: z.boolean().optional(),
+                            })
+                            .passthrough()
+                        )
+                        .optional(),
+                      scoringVersion: z.string(),
+                      formedAt: z
+                        .string()
+                        .datetime({ offset: true })
+                        .optional(),
+                      absenceIsNotSafety: z.boolean().optional().default(true),
+                    })
+                    .passthrough()
+                    .optional(),
+                  estateMatch: z
+                    .object({
+                      vulnerabilityId: z.string(),
+                      applicable: z.boolean(),
+                      suppressionReason: z
+                        .enum([
+                          'product_not_present',
+                          'version_not_affected',
+                          'product_retired',
+                          'platform_not_used',
+                        ])
+                        .optional(),
+                      matchedItems: z
+                        .array(
+                          z
+                            .object({
+                              assetGroupId: z.string().optional(),
+                              vendor: z.string(),
+                              product: z.string(),
+                              version: z.string().optional(),
+                              instanceCount: z.number().int().optional(),
+                              businessCriticality: z
+                                .enum(['low', 'medium', 'high', 'critical'])
+                                .optional(),
+                              internetFacing: z.boolean().optional(),
+                            })
+                            .passthrough()
+                        )
+                        .optional(),
+                      affectedInstanceCount: z.number().int().optional(),
+                      highestBusinessCriticality: z
+                        .enum(['low', 'medium', 'high', 'critical'])
+                        .optional(),
+                    })
+                    .passthrough()
+                    .optional(),
+                  assignedOwner: z.string().optional(),
+                  leadDaysAheadOfAdvisory: z.number().int().optional(),
+                  leadDaysAheadOfPublication: z.number().int().optional(),
+                  analystAdjustment: z
+                    .enum(['none', 'raised', 'lowered'])
+                    .optional(),
+                  analystRationale: z.string().optional(),
+                  withdrawalReason: z.string().optional(),
+                })
+                .passthrough()
+            ),
+            omittedWarningCount: z.number().int(),
+            capacityStatement: z.string(),
+          })
+          .partial()
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

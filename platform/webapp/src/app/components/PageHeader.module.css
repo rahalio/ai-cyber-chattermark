@@ -1,0 +1,13 @@
+.wrap { margin-bottom: 1.25rem; }
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  color: var(--cm-storm-slate);
+}
+.sub {
+  margin: 0.35rem 0 0;
+  color: var(--cm-muted);
+  max-width: 42rem;
+  line-height: 1.45;
+}

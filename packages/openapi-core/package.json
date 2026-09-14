@@ -1,0 +1,18 @@
+{
+  "name": "@chattermark/openapi-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI contracts for Chattermark (common + identity + product domains)",
+  "scripts": {
+    "lint:domains": "redocly lint",
+    "bundle:domains": "mkdir -p src/.bundled && redocly bundle identity --output src/.bundled/identity.openapi.yaml && redocly bundle identity --output src/.bundled/identity.json && redocly bundle signals --output src/.bundled/signals.openapi.yaml && redocly bundle signals --output src/.bundled/signals.json && redocly bundle sources --output src/.bundled/sources.openapi.yaml && redocly bundle sources --output src/.bundled/sources.json && redocly bundle forecasts --output src/.bundled/forecasts.openapi.yaml && redocly bundle forecasts --output src/.bundled/forecasts.json && redocly bundle estate --output src/.bundled/estate.openapi.yaml && redocly bundle estate --output src/.bundled/estate.json && redocly bundle warnings --output src/.bundled/warnings.openapi.yaml && redocly bundle warnings --output src/.bundled/warnings.json && redocly bundle decisions --output src/.bundled/decisions.openapi.yaml && redocly bundle decisions --output src/.bundled/decisions.json && redocly bundle assurance --output src/.bundled/assurance.openapi.yaml && redocly bundle assurance --output src/.bundled/assurance.json && redocly bundle governance --output src/.bundled/governance.openapi.yaml && redocly bundle governance --output src/.bundled/governance.json",
+    "lint": "pnpm run lint:domains",
+    "bundle": "pnpm run bundle:domains"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.34.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

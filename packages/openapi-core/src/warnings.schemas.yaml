@@ -1,0 +1,113 @@
+openapi: 3.1.0
+info:
+  title: Warnings schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    WarningId:
+      type: string
+    Vulnerability:
+      $ref: ./common/product-shared.yaml#/components/schemas/Vulnerability
+    Forecast:
+      $ref: ./common/product-shared.yaml#/components/schemas/Forecast
+    EstateMatch:
+      $ref: ./common/product-shared.yaml#/components/schemas/EstateMatch
+    Warning:
+      type: object
+      required: [id, vulnerabilityId, status, issuedAt]
+      x-dynamodb:
+        entityType: WARNING
+        pkPatternTemplate: "TENANT#${tenantId}#WARNING#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        vulnerabilityId:
+          type: string
+        status:
+          type: string
+          enum: [issued, validated, escalated, decided, withdrawn]
+        issuedAt:
+          type: string
+          format: date-time
+        vulnerability:
+          $ref: '#/components/schemas/Vulnerability'
+        forecastSnapshot:
+          $ref: '#/components/schemas/Forecast'
+        estateMatch:
+          $ref: '#/components/schemas/EstateMatch'
+        assignedOwner:
+          type: string
+        leadDaysAheadOfAdvisory:
+          type: integer
+        leadDaysAheadOfPublication:
+          type: integer
+        analystAdjustment:
+          type: string
+          enum: [none, raised, lowered]
+        analystRationale:
+          type: string
+        withdrawalReason:
+          type: string
+    WarningValidation:
+      type: object
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [confirm, raise, lower, withdraw]
+        rationale:
+          type: string
+        assignedOwner:
+          type: string
+    Shortlist:
+      type: object
+      properties:
+        period:
+          type: string
+        declaredCapacity:
+          type: integer
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+        omittedWarningCount:
+          type: integer
+        capacityStatement:
+          type: string
+    WarningResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Warning'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ShortlistResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Shortlist'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    WarningListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+        nextCursor:
+          type: string
+    WarningListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/WarningListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

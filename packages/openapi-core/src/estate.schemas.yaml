@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Estate schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    EstateItem:
+      allOf:
+        - $ref: ./common/product-shared.yaml#/components/schemas/EstateItem
+        - type: object
+          x-dynamodb:
+            entityType: ESTATE_ITEM
+            pkPatternTemplate: "TENANT#${tenantId}#ESTATE#${assetGroupId}"
+            skPatternTemplate: "ITEM#${vendor}#${product}"
+            pkPattern: template
+    EstateMatch:
+      $ref: ./common/product-shared.yaml#/components/schemas/EstateMatch
+    EstateSyncResult:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+        itemsAccepted:
+          type: integer
+        itemsRejected:
+          type: integer
+        tenantPrivate:
+          type: boolean
+          default: true
+        syncedAt:
+          type: string
+          format: date-time
+    EstateSyncRequest:
+      type: object
+      required: [sourceSystem, items]
+      properties:
+        sourceSystem:
+          type: string
+          enum: [cmdb, scanner, endpoint_agent, manual]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstateItem'
+    EstateSyncResultResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EstateSyncResult'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    EstateItemListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstateItem'
+        nextCursor:
+          type: string
+    EstateItemListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EstateItemListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    EstateMatchListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstateMatch'
+        nextCursor:
+          type: string
+    EstateMatchListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EstateMatchListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

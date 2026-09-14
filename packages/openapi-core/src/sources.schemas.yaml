@@ -1,0 +1,115 @@
+openapi: 3.1.0
+info:
+  title: Sources schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    SourceId:
+      type: string
+    Source:
+      $ref: ./common/product-shared.yaml#/components/schemas/Source
+    SourceReliability:
+      type: object
+      required: [sourceId, evaluatedWarnings]
+      x-dynamodb:
+        entityType: SOURCE_RELIABILITY
+        pkPatternTemplate: "TENANT#${tenantId}#SOURCE#${sourceId}"
+        skPatternTemplate: "RELIABILITY"
+        pkPattern: template
+      properties:
+        sourceId:
+          type: string
+        evaluatedWarnings:
+          type: integer
+        correctAgainstPublishedSeverity:
+          type: integer
+        precisionAgainstPublishedSeverity:
+          type: number
+          format: float
+        precisionAgainstExploitation:
+          type: number
+          format: float
+        medianLeadDays:
+          type: number
+          format: float
+        lastEvaluatedAt:
+          type: string
+          format: date-time
+        purposeStatement:
+          type: string
+        retentionExpiresAt:
+          type: string
+          format: date-time
+    ManipulationFinding:
+      type: object
+      required: [id, vulnerabilityId, detectedAt]
+      x-dynamodb:
+        entityType: MANIPULATION_FINDING
+        pkPatternTemplate: "TENANT#${tenantId}#MANIP#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        vulnerabilityId:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+        pattern:
+          type: string
+          enum: [coordinated_burst, near_identical_text, reciprocal_amplification, new_account_cluster]
+        suspectSourceIds:
+          type: array
+          items:
+            type: string
+        signalsAffected:
+          type: integer
+        actionTaken:
+          type: string
+          enum: [none, forecast_recomputed, warning_degraded, warning_withheld]
+    SourceReliabilityResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SourceReliability'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    SourceListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        nextCursor:
+          type: string
+    SourceListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SourceListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ManipulationFindingListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManipulationFinding'
+        nextCursor:
+          type: string
+    ManipulationFindingListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ManipulationFindingListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

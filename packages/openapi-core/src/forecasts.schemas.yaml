@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: Forecasts schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    VulnerabilityId:
+      type: string
+    Vulnerability:
+      $ref: ./common/product-shared.yaml#/components/schemas/Vulnerability
+    Source:
+      $ref: ./common/product-shared.yaml#/components/schemas/Source
+    Forecast:
+      $ref: ./common/product-shared.yaml#/components/schemas/Forecast
+    ScoringVersion:
+      type: object
+      required: [version, effectiveFrom]
+      x-dynamodb:
+        entityType: SCORING_VERSION
+        pkPatternTemplate: "SCORING#${version}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        version:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+        changeSummary:
+          type: string
+        heldForWarningIds:
+          type: boolean
+          default: true
+    ForecastResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Forecast'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ForecastListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Forecast'
+        nextCursor:
+          type: string
+    ForecastListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ForecastListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ScoringVersionListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoringVersion'
+        nextCursor:
+          type: string
+    ScoringVersionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ScoringVersionListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

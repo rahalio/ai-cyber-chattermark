@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  title: Assurance schemas
+  version: 0.1.0
+paths: {}
+components:
+  schemas:
+    PublishedSeverity:
+      $ref: ./common/product-shared.yaml#/components/schemas/PublishedSeverity
+    ExploitEvidence:
+      $ref: ./common/product-shared.yaml#/components/schemas/ExploitEvidence
+    Backtest:
+      type: object
+      required: [warningId, evaluatedAt]
+      x-dynamodb:
+        entityType: BACKTEST
+        pkPatternTemplate: "TENANT#${tenantId}#BACKTEST#${warningId}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        warningId:
+          type: string
+        vulnerabilityId:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        publishedSeverity:
+          $ref: '#/components/schemas/PublishedSeverity'
+        exploitEvidence:
+          $ref: '#/components/schemas/ExploitEvidence'
+        warningWasCorrect:
+          type: boolean
+        leadDaysRealised:
+          type: integer
+        outcomeClass:
+          type: string
+          enum: [true_positive, false_positive, missed_high_severity, missed_exploited]
+    AccuracyReport:
+      type: object
+      properties:
+        period:
+          type: string
+        warningsIssued:
+          type: integer
+        precisionAtCapacity:
+          type: number
+          format: float
+        precisionAgainstPublishedSeverity:
+          type: number
+          format: float
+        precisionAgainstExploitation:
+          type: number
+          format: float
+        exploitedCoverageShare:
+          type: number
+          format: float
+        medianLeadDays:
+          type: number
+          format: float
+        tenthPercentileLeadDays:
+          type: number
+          format: float
+        missedExploitedCount:
+          type: integer
+        adverseFindingsDisclosed:
+          type: string
+    EvidentiaryTimelineRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose:
+          type: string
+          enum: [regulatory_review, insurance_claim, board_report, internal_investigation]
+        vulnerabilityIds:
+          type: array
+          items:
+            type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+    EvidentiaryTimeline:
+      type: object
+      x-dynamodb:
+        entityType: EVIDENTIARY_TIMELINE
+        pkPatternTemplate: "TENANT#${tenantId}#TIMELINE#${id}"
+        skPatternTemplate: "METADATA"
+        pkPattern: template
+      properties:
+        id:
+          type: string
+        purpose:
+          type: string
+          enum: [regulatory_review, insurance_claim, board_report, internal_investigation]
+        assembledAt:
+          type: string
+          format: date-time
+        assembledBy:
+          type: string
+        manifestHash:
+          type: string
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              at:
+                type: string
+                format: date-time
+              event:
+                type: string
+                enum: [warning_issued, analyst_validated, decision_recorded, deferral_reviewed, window_completed, severity_published, exploitation_corroborated]
+              warningId:
+                type: string
+              detail:
+                type: string
+    AccuracyReportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AccuracyReport'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    EvidentiaryTimelineResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EvidentiaryTimeline'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    BacktestListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Backtest'
+        nextCursor:
+          type: string
+    BacktestListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/BacktestListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

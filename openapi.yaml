@@ -1,4 +1,5 @@
-openapi: 3.0.3
+# DEPRECATED monolith — see packages/openapi-core/src/{domain}.yaml and docs/openapi-v0-monolith.yaml
+3.0.3
 info:
   title: Chattermark
   version: 0.1.0

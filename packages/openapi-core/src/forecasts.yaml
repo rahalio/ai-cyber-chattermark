@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Forecasts API
+  version: 0.1.0
+  description: |
+    Per-vulnerability exploit-likelihood forecasts and scoring versions.
+  license:
+    name: Proprietary
+    url: https://chattermark.local/license
+  x-domain: fct
+  x-product-slug: ai-cyber-chattermark
+servers:
+  - url: https://api.chattermark.local
+    description: Chattermark API
+
+security:
+  - bearerAuth: []
+tags:
+  - name: Forecasts
+    description: Per-vulnerability exploit-likelihood forecasts and scoring versions
+paths:
+  /v1/forecasts:
+    get:
+      operationId: listForecasts
+      tags: [Forecasts]
+      summary: List forecasts
+      x-repository: Forecast
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: minScore
+          in: query
+          schema:
+            type: number
+            format: float
+      responses:
+        '200':
+          description: Forecasts page
+          content:
+            application/json:
+              schema:
+                $ref: ./forecasts.schemas.yaml#/components/schemas/ForecastListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/forecasts/{vulnerabilityId}:
+    parameters:
+      - name: vulnerabilityId
+        in: path
+        required: true
+        schema:
+          $ref: ./forecasts.schemas.yaml#/components/schemas/VulnerabilityId
+    get:
+      operationId: getForecast
+      tags: [Forecasts]
+      summary: Get forecast for a vulnerability
+      x-repository: Forecast
+      responses:
+        '200':
+          description: Forecast
+          content:
+            application/json:
+              schema:
+                $ref: ./forecasts.schemas.yaml#/components/schemas/ForecastResponse
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/scoring-versions:
+    get:
+      operationId: listScoringVersions
+      tags: [Forecasts]
+      summary: List scoring versions
+      x-repository: ScoringVersion
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+      responses:
+        '200':
+          description: Scoring versions
+          content:
+            application/json:
+              schema:
+                $ref: ./forecasts.schemas.yaml#/components/schemas/ScoringVersionListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
