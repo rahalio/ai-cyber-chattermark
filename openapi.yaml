@@ -1,0 +1,1634 @@
+openapi: 3.0.3
+info:
+  title: Chattermark
+  version: 0.1.0
+  description: >-
+    Exploit-likelihood early warning for patch prioritisation. Chattermark scores what
+    practitioners say about a vulnerability, binds each message to a vulnerability
+    identifier by following its outbound link, weights the result by each source's
+    recorded accuracy, screens for coordinated amplification, and issues a shortlist
+    sized to the customer's emergency change capacity. Warnings terminate in an
+    append-only decision record suitable for regulatory and insurance review.
+  x-product-slug: ai-cyber-chattermark
+  x-source: ai-in-cyber/1902.10680v1/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Signals
+    description: Ingested practitioner messages, severity opinions, and vulnerability binding
+  - name: Sources
+    description: Source reliability ledger and manipulation findings
+  - name: Forecasts
+    description: Per-vulnerability exploit-likelihood forecasts and scoring versions
+  - name: Estate
+    description: Customer software inventory and applicability scoping
+  - name: Warnings
+    description: Policy-gated warning issuance, analyst validation, and capacity shaping
+  - name: Decisions
+    description: Accept, defer, and decline records with accountable owners
+  - name: Assurance
+    description: Back-testing, self-reported accuracy, and evidentiary timelines
+  - name: Governance
+    description: Escalation policy and change logging
+paths:
+  /v1/signals:
+    get:
+      operationId: listSignals
+      tags: [Signals]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+            example: CVE-2016-5195
+        - name: bindingStatus
+          in: query
+          schema:
+            type: string
+            enum: [bound, held_ambiguous, unbound]
+        - name: minSeverityOpinion
+          in: query
+          schema:
+            type: number
+            format: float
+      responses:
+        "200":
+          description: Signals page with severity opinions and binding metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeSignal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: ingestSignal
+      tags: [Signals]
+      description: >-
+        Submit a public practitioner message for scoring and binding. Content is scored
+        for asserted threat and perceived severity before any binding is attempted.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignalIngest"
+      responses:
+        "202":
+          description: Signal accepted for scoring
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeSignal"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /v1/signals/{signalId}:
+    parameters:
+      - $ref: "#/components/parameters/SignalId"
+    get:
+      operationId: getSignal
+      tags: [Signals]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Signal with quoted language, opinion, and binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeSignal"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/signals/{signalId}/binding:
+    parameters:
+      - $ref: "#/components/parameters/SignalId"
+    put:
+      operationId: resolveSignalBinding
+      tags: [Signals]
+      description: >-
+        Analyst resolution of a binding held as ambiguous, for example a linked page
+        naming more than one vulnerability identifier.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VulnerabilityBindingResolve"
+      responses:
+        "200":
+          description: Binding resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeVulnerabilityBinding"
+  /v1/sources:
+    get:
+      operationId: listSources
+      tags: [Sources]
+      description: >-
+        Source reliability ledger. Sources carry no weight until they clear a minimum
+        volume of evaluated warnings.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: minEvaluatedWarnings
+          in: query
+          schema:
+            type: integer
+            default: 5
+        - name: trustState
+          in: query
+          schema:
+            type: string
+            enum: [unrated, provisional, trusted, degraded, suppressed]
+      responses:
+        "200":
+          description: Sources page with recorded accuracy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeSource"
+  /v1/sources/{sourceId}/reliability:
+    parameters:
+      - $ref: "#/components/parameters/SourceId"
+    get:
+      operationId: getSourceReliability
+      tags: [Sources]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Recorded accuracy against published severity and exploitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeSourceReliability"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/sources/manipulation-findings:
+    get:
+      operationId: listManipulationFindings
+      tags: [Sources]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Suspected coordinated inauthentic amplification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeManipulationFinding"
+  /v1/forecasts:
+    get:
+      operationId: listForecasts
+      tags: [Forecasts]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: minScore
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: applicableOnly
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Forecasts page with screened and unscreened scores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeForecast"
+  /v1/forecasts/{vulnerabilityId}:
+    parameters:
+      - $ref: "#/components/parameters/VulnerabilityId"
+    get:
+      operationId: getForecast
+      tags: [Forecasts]
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Forecast with contributing signals, sources, and scoring version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeForecast"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/scoring-versions:
+    get:
+      operationId: listScoringVersions
+      tags: [Forecasts]
+      description: >-
+        Scoring logic versions. Retained for as long as any warning issued under them,
+        so a historical decision is never judged against later logic.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Scoring versions page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeScoringVersion"
+  /v1/estate/items:
+    get:
+      operationId: listEstateItems
+      tags: [Estate]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: vendor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tenant software inventory page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeEstateItem"
+    post:
+      operationId: syncEstateInventory
+      tags: [Estate]
+      description: >-
+        Tenant-private inventory synchronisation. Estate data never contributes to
+        signal served to another tenant.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                sourceSystem:
+                  type: string
+                  enum: [cmdb, scanner, endpoint_agent, manual]
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/EstateItem"
+      responses:
+        "202":
+          description: Inventory accepted for scoping
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeEstateSyncResult"
+  /v1/estate/matches:
+    get:
+      operationId: listEstateMatches
+      tags: [Estate]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: vulnerabilityId
+          in: query
+          schema:
+            type: string
+        - name: suppressed
+          in: query
+          schema:
+            type: boolean
+          description: Show suppressed non-applicable findings for transparency
+      responses:
+        "200":
+          description: Applicability matches including visible suppressions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeEstateMatch"
+  /v1/warnings:
+    get:
+      operationId: listWarnings
+      tags: [Warnings]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [issued, validated, escalated, decided, withdrawn]
+      responses:
+        "200":
+          description: Warnings page with lead-time clocks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeWarning"
+  /v1/warnings/shortlist:
+    get:
+      operationId: getCapacityShortlist
+      tags: [Warnings]
+      description: >-
+        Warnings ranked and truncated to the tenant's declared emergency change capacity
+        for the period, rather than a scored inventory of all open vulnerabilities.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            example: 2026-09
+        - name: capacity
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Capacity-sized shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeShortlist"
+  /v1/warnings/{warningId}/validation:
+    parameters:
+      - $ref: "#/components/parameters/WarningId"
+    post:
+      operationId: validateWarning
+      tags: [Warnings]
+      description: >-
+        Analyst gate before escalation. Permits raising or lowering a warning with a
+        recorded rationale.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarningValidation"
+      responses:
+        "200":
+          description: Warning validated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeWarning"
+        "409":
+          description: Warning already decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /v1/warnings/{warningId}/decision:
+    parameters:
+      - $ref: "#/components/parameters/WarningId"
+    post:
+      operationId: recordWarningDecision
+      tags: [Decisions]
+      description: >-
+        Append-only terminal decision. A warning may not be closed by expiry alone.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionCreate"
+      responses:
+        "201":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeDecision"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /v1/decisions:
+    get:
+      operationId: listDecisions
+      tags: [Decisions]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: outcome
+          in: query
+          schema:
+            type: string
+            enum: [window_opened, deferred, declined, mitigated_by_control]
+      responses:
+        "200":
+          description: Decisions page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeDecision"
+  /v1/decisions/deferrals/due:
+    get:
+      operationId: listDueDeferrals
+      tags: [Decisions]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Deferrals whose review date has been reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeDeferral"
+  /v1/decisions/{decisionId}/compensating-control:
+    parameters:
+      - $ref: "#/components/parameters/DecisionId"
+    post:
+      operationId: assertCompensatingControl
+      tags: [Decisions]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompensatingControl"
+      responses:
+        "201":
+          description: Compensating control asserted against the decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeDecision"
+  /v1/assurance/backtests:
+    get:
+      operationId: listBacktests
+      tags: [Assurance]
+      description: >-
+        Reconciliation of issued warnings against eventual published severity and
+        corroborated exploitation evidence.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Back-tests page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeBacktest"
+  /v1/assurance/accuracy-report:
+    get:
+      operationId: getAccuracyReport
+      tags: [Assurance]
+      description: >-
+        Self-reported realised precision and lead time, including periods of poor
+        performance.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            example: 2026-Q2
+      responses:
+        "200":
+          description: Accuracy report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeAccuracyReport"
+  /v1/assurance/evidentiary-timeline:
+    post:
+      operationId: exportEvidentiaryTimeline
+      tags: [Assurance]
+      description: >-
+        Assemble a what-was-known-when record for regulatory post-incident review,
+        cyber-insurance claims, or board reporting.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvidentiaryTimelineRequest"
+      responses:
+        "201":
+          description: Timeline assembled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeEvidentiaryTimeline"
+        "403":
+          description: Caller lacks the evidentiary export privilege
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /v1/governance/escalation-policy:
+    get:
+      operationId: getEscalationPolicy
+      tags: [Governance]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Active escalation policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeEscalationPolicy"
+    put:
+      operationId: updateEscalationPolicy
+      tags: [Governance]
+      description: >-
+        Requires the governance scope. Every change is logged as an audit event.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalationPolicy"
+      responses:
+        "200":
+          description: Policy updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeEscalationPolicy"
+        "403":
+          description: Caller lacks the governance scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /v1/governance/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [Governance]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Audit events page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeAuditEvent"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    SignalId:
+      name: signalId
+      in: path
+      required: true
+      schema:
+        type: string
+    SourceId:
+      name: sourceId
+      in: path
+      required: true
+      schema:
+        type: string
+    VulnerabilityId:
+      name: vulnerabilityId
+      in: path
+      required: true
+      schema:
+        type: string
+    WarningId:
+      name: warningId
+      in: path
+      required: true
+      schema:
+        type: string
+    DecisionId:
+      name: decisionId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnprocessableEntity:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+    Source:
+      type: object
+      required: [id, handle, trustState]
+      properties:
+        id:
+          type: string
+        handle:
+          type: string
+        platform:
+          type: string
+          enum: [social, blog, vendor_advisory, mailing_list]
+        trustState:
+          type: string
+          enum: [unrated, provisional, trusted, degraded, suppressed]
+        evaluatedWarnings:
+          type: integer
+        suspectedInauthentic:
+          type: boolean
+    SourceReliability:
+      type: object
+      required: [sourceId, evaluatedWarnings]
+      properties:
+        sourceId:
+          type: string
+        evaluatedWarnings:
+          type: integer
+        correctAgainstPublishedSeverity:
+          type: integer
+        precisionAgainstPublishedSeverity:
+          type: number
+          format: float
+        precisionAgainstExploitation:
+          type: number
+          format: float
+        medianLeadDays:
+          type: number
+          format: float
+        lastEvaluatedAt:
+          type: string
+          format: date-time
+        purposeStatement:
+          type: string
+          description: Declared purpose for holding evaluative records on a public identity
+        retentionExpiresAt:
+          type: string
+          format: date-time
+    EntityMention:
+      type: object
+      required: [surfaceForm]
+      properties:
+        surfaceForm:
+          type: string
+          example: Adobe Flash Player
+        normalisedVendor:
+          type: string
+        normalisedProduct:
+          type: string
+        maskedInScoring:
+          type: boolean
+          default: true
+          description: Entity is masked during scoring to avoid vendor-name bias
+    SeverityOpinion:
+      type: object
+      required: [threatAsserted, severityScore]
+      properties:
+        threatAsserted:
+          type: boolean
+        threatScore:
+          type: number
+          format: float
+        severityScore:
+          type: number
+          format: float
+        criteriaMatched:
+          type: array
+          items:
+            type: string
+            enum: [followers_should_worry, easily_exploitable, affects_many_users]
+        indicativePhrases:
+          type: array
+          items:
+            type: string
+          example: [critical vulnerability, patch now, millions of devices]
+        scoringVersion:
+          type: string
+    VulnerabilityBinding:
+      type: object
+      required: [status, method]
+      properties:
+        status:
+          type: string
+          enum: [bound, held_ambiguous, unbound]
+        vulnerabilityId:
+          type: string
+        method:
+          type: string
+          enum: [identifier_in_text, identifier_in_url, identifier_in_linked_page, analyst_resolved]
+        linkedUrl:
+          type: string
+        identifiersFoundOnPage:
+          type: integer
+          description: Bindings are held when a linked page names more than one identifier
+        confidence:
+          type: number
+          format: float
+        resolvedBy:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+    VulnerabilityBindingResolve:
+      type: object
+      required: [vulnerabilityId, rationale]
+      properties:
+        vulnerabilityId:
+          type: string
+        rationale:
+          type: string
+    Signal:
+      type: object
+      required: [id, sourceId, postedAt, text]
+      properties:
+        id:
+          type: string
+        sourceId:
+          type: string
+        postedAt:
+          type: string
+          format: date-time
+        text:
+          type: string
+          description: Quoted language shown to analysts and asset owners
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityMention"
+        opinion:
+          $ref: "#/components/schemas/SeverityOpinion"
+        binding:
+          $ref: "#/components/schemas/VulnerabilityBinding"
+        nearDuplicateOf:
+          type: string
+    SignalIngest:
+      type: object
+      required: [sourceHandle, postedAt, text]
+      properties:
+        sourceHandle:
+          type: string
+        platform:
+          type: string
+          enum: [social, blog, vendor_advisory, mailing_list]
+        postedAt:
+          type: string
+          format: date-time
+        text:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+    Vulnerability:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: CVE-2016-5195
+        title:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        firstSeenOnlineAt:
+          type: string
+          format: date-time
+        vendorAdvisoryAt:
+          type: string
+          format: date-time
+        databasePublishedAt:
+          type: string
+          format: date-time
+    PublishedSeverity:
+      type: object
+      properties:
+        vulnerabilityId:
+          type: string
+        baseScore:
+          type: number
+          format: float
+        qualitativeRating:
+          type: string
+          enum: [none, low, medium, high, critical]
+        scoringStandard:
+          type: string
+          enum: [v2, v3]
+        publishedAt:
+          type: string
+          format: date-time
+        awaitingAnalysis:
+          type: boolean
+    ExploitEvidence:
+      type: object
+      properties:
+        vulnerabilityId:
+          type: string
+        corroboratedBy:
+          type: array
+          items:
+            type: string
+            enum: [antivirus_signature, intrusion_signature, exploit_archive, internal_telemetry]
+        firstEvidenceAt:
+          type: string
+          format: date-time
+        evidenceIsIncomplete:
+          type: boolean
+          default: true
+          description: Exploitation ground truth is known to be an incomplete list
+    ManipulationFinding:
+      type: object
+      required: [id, vulnerabilityId, detectedAt]
+      properties:
+        id:
+          type: string
+        vulnerabilityId:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+        pattern:
+          type: string
+          enum: [coordinated_burst, near_identical_text, reciprocal_amplification, new_account_cluster]
+        suspectSourceIds:
+          type: array
+          items:
+            type: string
+        signalsAffected:
+          type: integer
+        actionTaken:
+          type: string
+          enum: [none, forecast_recomputed, warning_degraded, warning_withheld]
+    ScoringVersion:
+      type: object
+      required: [version, effectiveFrom]
+      properties:
+        version:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+        changeSummary:
+          type: string
+        heldForWarningIds:
+          type: boolean
+          default: true
+    Forecast:
+      type: object
+      required: [vulnerabilityId, score, scoringVersion]
+      properties:
+        vulnerabilityId:
+          type: string
+        score:
+          type: number
+          format: float
+          description: Maximum credible severity opinion across bound signals
+        scoreAfterManipulationScreening:
+          type: number
+          format: float
+        independentCredibleSources:
+          type: integer
+        contributingSignalIds:
+          type: array
+          items:
+            type: string
+        topSources:
+          type: array
+          items:
+            $ref: "#/components/schemas/Source"
+        scoringVersion:
+          type: string
+        formedAt:
+          type: string
+          format: date-time
+        absenceIsNotSafety:
+          type: boolean
+          default: true
+          description: A low or missing score is not evidence of low risk
+    EstateItem:
+      type: object
+      required: [vendor, product]
+      properties:
+        assetGroupId:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        version:
+          type: string
+        instanceCount:
+          type: integer
+        businessCriticality:
+          type: string
+          enum: [low, medium, high, critical]
+        internetFacing:
+          type: boolean
+    EstateSyncResult:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+        itemsAccepted:
+          type: integer
+        itemsRejected:
+          type: integer
+        tenantPrivate:
+          type: boolean
+          default: true
+        syncedAt:
+          type: string
+          format: date-time
+    EstateMatch:
+      type: object
+      required: [vulnerabilityId, applicable]
+      properties:
+        vulnerabilityId:
+          type: string
+        applicable:
+          type: boolean
+        suppressionReason:
+          type: string
+          enum: [product_not_present, version_not_affected, product_retired, platform_not_used]
+        matchedItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/EstateItem"
+        affectedInstanceCount:
+          type: integer
+        highestBusinessCriticality:
+          type: string
+          enum: [low, medium, high, critical]
+    Warning:
+      type: object
+      required: [id, vulnerabilityId, status, issuedAt]
+      properties:
+        id:
+          type: string
+        vulnerabilityId:
+          type: string
+        status:
+          type: string
+          enum: [issued, validated, escalated, decided, withdrawn]
+        issuedAt:
+          type: string
+          format: date-time
+        vulnerability:
+          $ref: "#/components/schemas/Vulnerability"
+        forecastSnapshot:
+          $ref: "#/components/schemas/Forecast"
+        estateMatch:
+          $ref: "#/components/schemas/EstateMatch"
+        assignedOwner:
+          type: string
+        leadDaysAheadOfAdvisory:
+          type: integer
+        leadDaysAheadOfPublication:
+          type: integer
+        analystAdjustment:
+          type: string
+          enum: [none, raised, lowered]
+        analystRationale:
+          type: string
+        withdrawalReason:
+          type: string
+    WarningValidation:
+      type: object
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [confirm, raise, lower, withdraw]
+        rationale:
+          type: string
+        assignedOwner:
+          type: string
+    Shortlist:
+      type: object
+      properties:
+        period:
+          type: string
+        declaredCapacity:
+          type: integer
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warning"
+        omittedWarningCount:
+          type: integer
+        capacityStatement:
+          type: string
+    CompensatingControl:
+      type: object
+      required: [description, assertedBy]
+      properties:
+        description:
+          type: string
+        controlType:
+          type: string
+          enum: [network_segmentation, virtual_patch, feature_disabled, access_restriction, monitoring_only]
+        assertedBy:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    Deferral:
+      type: object
+      required: [decisionId, reviewDate]
+      properties:
+        decisionId:
+          type: string
+        warningId:
+          type: string
+        reviewDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        reviewCount:
+          type: integer
+    ChangeWindow:
+      type: object
+      properties:
+        id:
+          type: string
+        scheduledStart:
+          type: string
+          format: date-time
+        scheduledEnd:
+          type: string
+          format: date-time
+        emergency:
+          type: boolean
+        changeRecordReference:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+    DecisionCreate:
+      type: object
+      required: [outcome, owner]
+      properties:
+        outcome:
+          type: string
+          enum: [window_opened, deferred, declined, mitigated_by_control]
+        owner:
+          type: string
+        reason:
+          type: string
+        reviewDate:
+          type: string
+          format: date
+          description: Required when the outcome is deferred
+        changeRecordReference:
+          type: string
+    Decision:
+      type: object
+      required: [id, warningId, outcome, owner, decidedAt]
+      properties:
+        id:
+          type: string
+        warningId:
+          type: string
+        outcome:
+          type: string
+          enum: [window_opened, deferred, declined, mitigated_by_control]
+        owner:
+          type: string
+        reason:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        deferral:
+          $ref: "#/components/schemas/Deferral"
+        compensatingControl:
+          $ref: "#/components/schemas/CompensatingControl"
+        changeWindow:
+          $ref: "#/components/schemas/ChangeWindow"
+        appendOnly:
+          type: boolean
+          default: true
+    Backtest:
+      type: object
+      required: [warningId, evaluatedAt]
+      properties:
+        warningId:
+          type: string
+        vulnerabilityId:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        publishedSeverity:
+          $ref: "#/components/schemas/PublishedSeverity"
+        exploitEvidence:
+          $ref: "#/components/schemas/ExploitEvidence"
+        warningWasCorrect:
+          type: boolean
+        leadDaysRealised:
+          type: integer
+        outcomeClass:
+          type: string
+          enum: [true_positive, false_positive, missed_high_severity, missed_exploited]
+    AccuracyReport:
+      type: object
+      properties:
+        period:
+          type: string
+        warningsIssued:
+          type: integer
+        precisionAtCapacity:
+          type: number
+          format: float
+        precisionAgainstPublishedSeverity:
+          type: number
+          format: float
+        precisionAgainstExploitation:
+          type: number
+          format: float
+        exploitedCoverageShare:
+          type: number
+          format: float
+        medianLeadDays:
+          type: number
+          format: float
+        tenthPercentileLeadDays:
+          type: number
+          format: float
+        missedExploitedCount:
+          type: integer
+        adverseFindingsDisclosed:
+          type: string
+    EvidentiaryTimelineRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose:
+          type: string
+          enum: [regulatory_review, insurance_claim, board_report, internal_investigation]
+        vulnerabilityIds:
+          type: array
+          items:
+            type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+    EvidentiaryTimeline:
+      type: object
+      properties:
+        id:
+          type: string
+        purpose:
+          type: string
+          enum: [regulatory_review, insurance_claim, board_report, internal_investigation]
+        assembledAt:
+          type: string
+          format: date-time
+        assembledBy:
+          type: string
+        manifestHash:
+          type: string
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              at:
+                type: string
+                format: date-time
+              event:
+                type: string
+                enum: [warning_issued, analyst_validated, decision_recorded, deferral_reviewed, window_completed, severity_published, exploitation_corroborated]
+              warningId:
+                type: string
+              detail:
+                type: string
+    EscalationPolicy:
+      type: object
+      required: [minimumScore, minimumIndependentSources]
+      properties:
+        minimumScore:
+          type: number
+          format: float
+        minimumIndependentSources:
+          type: integer
+          minimum: 2
+          description: No single source may raise a warning above the threshold alone
+        manipulationTolerance:
+          type: number
+          format: float
+        minimumSourceEvaluatedWarnings:
+          type: integer
+          default: 5
+        suppressNonApplicable:
+          type: boolean
+          default: true
+        deferralMaxDays:
+          type: integer
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    AuditEvent:
+      type: object
+      required: [id, at, actor, action]
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        action:
+          type: string
+          enum: [policy_changed, warning_withdrawn, binding_resolved, source_suppressed, timeline_exported, scoring_version_activated]
+        detail:
+          type: string
+    DataEnvelopeSignal:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Signal"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeVulnerabilityBinding:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/VulnerabilityBinding"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeSourceReliability:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/SourceReliability"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeForecast:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Forecast"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeEstateSyncResult:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/EstateSyncResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeWarning:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Warning"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeShortlist:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Shortlist"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeDecision:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Decision"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeAccuracyReport:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/AccuracyReport"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeEvidentiaryTimeline:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/EvidentiaryTimeline"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    DataEnvelopeEscalationPolicy:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/EscalationPolicy"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeSignal:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Signal"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeSource:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Source"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeManipulationFinding:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ManipulationFinding"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeForecast:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Forecast"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeScoringVersion:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScoringVersion"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeEstateItem:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/EstateItem"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeEstateMatch:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/EstateMatch"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeWarning:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Warning"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeDecision:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Decision"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeDeferral:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Deferral"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeBacktest:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Backtest"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeAuditEvent:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
